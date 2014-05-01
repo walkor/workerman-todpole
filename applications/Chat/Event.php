@@ -93,9 +93,21 @@ class Event
                 // 转播给所有用户
                 $message_data['id'] = $uid;
                 $message_data['life'] = 1;
-                $message_data['name'] = 'guest.'.$uid;
+                $message_data['name'] = 'Guest.'.$uid;
                 $message_data['authorized'] = false;
-                Gateway::sendToAll(json_encode($message_data));
+                Gateway::sendToAll(json_encode(
+                        array(
+                                'type'     => 'update',
+                                'id'         => $uid,
+                                'angle'   => $message_data["angle"]+0,
+                                'momentum' => $message_data["momentum"]+0,
+                                'x'                   => $message_data["x"]+0,
+                                'y'                   => $message_data["y"]+0,
+                                'life'                => 1,
+                                'name'           => 'Guest.'.$uid,
+                                'authorized'  => false,
+                                )
+                        ));
                 return;
                 
             // 用户发言 message: {type:say, to_uid:xx, content:xx}
