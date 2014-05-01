@@ -100,7 +100,7 @@ class Event
                                 'x'                   => $message_data["x"]+0,
                                 'y'                   => $message_data["y"]+0,
                                 'life'                => 1,
-                                'name'           => 'Guest.'.$uid,
+                                'name'           => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$uid,
                                 'authorized'  => false,
                                 )
                         ));
