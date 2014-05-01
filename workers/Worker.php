@@ -7,10 +7,10 @@
  * 
  */
 require_once WORKERMAN_ROOT_DIR . 'man/Core/SocketWorker.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Game/Protocols/GatewayProtocol.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Game/Event.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Protocols/GatewayProtocol.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Event.php';
 
-class GameWorker extends Man\Core\SocketWorker
+class Worker extends Man\Core\SocketWorker
 {
     public function dealInput($recv_str)
     {

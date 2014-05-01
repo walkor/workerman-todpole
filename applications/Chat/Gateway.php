@@ -1,19 +1,19 @@
 <?php
 /**
  * 
- * 
+ * 数据发送相关
+ * sendToAll sendToUid
  * @author walkor <worker-man@qq.com>
  * 
  */
 
-require_once WORKERMAN_ROOT_DIR . 'applications/Game/Store.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Store.php';
 
 class GateWay
 {
    /**
-    * 向所有用户广播消息
-    * @param string $message 消息内容
-    * @return void
+    * 向所有客户端广播消息
+    * @param string $message
     */
    public static function sendToAll($message)
    {
@@ -26,7 +26,7 @@ class GateWay
        $pack->header['client_ip'] = Context::$client_ip;
        $pack->header['client_port'] = Context::$client_port;
        $pack->header['uid'] = Context::$uid;
-       $pack->body = $message;
+       $pack->body = \App\Common\Protocols\WebSocket::encode($message);
        $buffer = $pack->getBuffer();
        $all_addresses = Store::get('GLOBAL_GATEWAY_ADDRESS');
        foreach($all_addresses as $address)
@@ -39,28 +39,25 @@ class GateWay
     * 向某个用户发消息
     * @param int $uid
     * @param string $message
-    * @return bool
     */
-   public static function sendToUid($uid, $message)
+   public static function sendToUid($uid, $message, $raw_data = false)
    {
-       return self::sendCmdAndMessageToUid($uid, GatewayProtocol::CMD_SEND_TO_ONE, $message);
+       return self::sendCmdAndMessageToUid($uid, GatewayProtocol::CMD_SEND_TO_ONE, $message, $raw_data);
    }
    
    /**
     * 向当前用户发送消息
     * @param string $message
-    * @return bool
     */
-   public static function sendToCurrentUid($message)
+   public static function sendToCurrentUid($message, $raw_data = false)
    {
-       return self::sendCmdAndMessageToUid(null, GatewayProtocol::CMD_SEND_TO_ONE, $message);
+       return self::sendCmdAndMessageToUid(null, GatewayProtocol::CMD_SEND_TO_ONE, $message, $raw_data);
    }
    
    /**
     * 将某个用户踢出
     * @param int $uid
     * @param string $message
-    * @return bool
     */
    public static function kickUid($uid, $message)
    {
@@ -83,7 +80,6 @@ class GateWay
    /**
     * 踢掉当前用户
     * @param string $message
-    * @return bool
     */
    public static function kickCurrentUser($message)
    {
@@ -98,7 +94,7 @@ class GateWay
     * @param string $message
     * @return boolean
     */
-   public static function sendCmdAndMessageToUid($uid, $cmd , $message)
+   public static function sendCmdAndMessageToUid($uid, $cmd , $message, $raw_data = false)
    {
        $pack = new GatewayProtocol();
        $pack->header['cmd'] = $cmd;
@@ -125,7 +121,7 @@ class GateWay
        $pack->header['client_ip'] = Context::$client_ip;
        $pack->header['client_port'] = Context::$client_port;
        $pack->header['uid'] = empty($uid) ? 0 : $uid;
-       $pack->body = $message;
+       $pack->body = $raw_data ? $message : \App\Common\Protocols\WebSocket::encode($message);
         
        return self::sendToGateway("udp://{$pack->header['local_ip']}:{$pack->header['local_port']}", $pack->getBuffer());
    }
@@ -153,7 +149,7 @@ class GateWay
            $pack->header['client_port'] = Context::$client_port;
        }
        $pack->header['uid'] = $uid ? $uid : 0;
-       $pack->body = $message;
+       $pack->body = \App\Common\Protocols\WebSocket::encode($message);
        
        return self::sendToGateway("udp://{$pack->header['local_ip']}:{$pack->header['local_port']}", $pack->getBuffer());
    }

@@ -9,10 +9,10 @@
  * 
  */
 require_once WORKERMAN_ROOT_DIR . 'man/Core/SocketWorker.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Game/Protocols/GatewayProtocol.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Game/Store.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Protocols/GatewayProtocol.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Store.php';
 
-class GameGateway extends Man\Core\SocketWorker
+class Gateway extends Man\Core\SocketWorker
 {
     /**
      * 内部通信socket
@@ -47,7 +47,7 @@ class GameGateway extends Man\Core\SocketWorker
     
     
     /**
-     * 到GameWorker的通信地址
+     * 到Worker的通信地址
      * @var array
      */ 
     protected $workerAddresses = array();
@@ -101,9 +101,8 @@ class GameGateway extends Man\Core\SocketWorker
     }
     
     /**
-     * 存储全局的通信地址
+     * 存储全局的通信地址 
      * @param string $address
-     * @todo 用锁机制等保证数据完整性
      */
     protected function registerAddress($address)
     {
@@ -259,15 +258,7 @@ class GameGateway extends Man\Core\SocketWorker
     protected function sendToWorker($cmd, $socket_id, $body = '')
     {
         $address= $this->getRemoteAddress($socket_id);
-        if($address)
-        {
-            list($client_ip, $client_port) = explode(':', $address, 2);
-        }
-        else
-        {
-            $client_ip = '0.0.0.0';
-            $client_port = 0;
-        }
+        list($client_ip, $client_port) = explode(':', $address, 2);
         $pack = new GatewayProtocol();
         $pack->header['cmd'] = $cmd;
         $pack->header['local_ip'] = $this->lanIp;
@@ -295,5 +286,10 @@ class GameGateway extends Man\Core\SocketWorker
         {
             echo $str."\n";
         }
+    }
+    
+    public function onStop()
+    {
+        Store::deleteAll();
     }
 }
