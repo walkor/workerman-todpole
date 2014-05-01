@@ -34,7 +34,7 @@ class Event
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
            // 把时间戳当成uid
-           $uid = (substr(strval(microtime(true)), 3, 10)*100)%1000000;
+           $uid = (substr(strval(microtime(true)), 2, 10)*100)%1000000;
            $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
            // 记录uid到gateway通信地址的映射
