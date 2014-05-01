@@ -7,7 +7,7 @@
  * 
  */
 
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Gateway.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Gateway.php';
 require_once WORKERMAN_ROOT_DIR . 'applications/Common/Protocols/WebSocket.php';
 
 class Event
@@ -33,8 +33,8 @@ class Event
            $new_message .= "Sec-WebSocket-Version: 13\r\n";
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
-           // 把时间戳当成uid
-           $uid = (substr(strval(microtime(true)), 2, 10)*100)%1000000;
+           // 把时间戳当成uid，todpole程序uid固定为6位数字
+           $uid = (substr(strval(microtime(true)), 6, 7)*100)%1000000;
            $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
            // 记录uid到gateway通信地址的映射

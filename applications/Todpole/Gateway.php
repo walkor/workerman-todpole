@@ -7,7 +7,7 @@
  * 
  */
 
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Store.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Store.php';
 
 class GateWay
 {

@@ -7,8 +7,8 @@
  * 
  */
 require_once WORKERMAN_ROOT_DIR . 'man/Core/SocketWorker.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Protocols/GatewayProtocol.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Event.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Protocols/GatewayProtocol.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Event.php';
 
 class Worker extends Man\Core\SocketWorker
 {

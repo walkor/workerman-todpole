@@ -9,8 +9,8 @@
  * 
  */
 require_once WORKERMAN_ROOT_DIR . 'man/Core/SocketWorker.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Protocols/GatewayProtocol.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Chat/Store.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Protocols/GatewayProtocol.php';
+require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Store.php';
 
 class Gateway extends Man\Core\SocketWorker
 {
