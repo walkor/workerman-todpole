@@ -63,7 +63,7 @@ class Event
    public static function onClose($uid)
    {
        // 广播 xxx 退出了
-       //GateWay::sendToAll(json_encode(array('type'=>'logout', 'uid'=> $uid, 'time'=>date('Y-m-d H:i:s'))));
+       //GateWay::sendToAll();
    }
    
    /**

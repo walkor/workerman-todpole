@@ -35,10 +35,10 @@
 			</section>
 			
 				<section id="wtf">
-				   <h2><a rel="external" href="http://workerman.net/workerman-todpole">workerman-todpole</a></h2>
+				   <h2>后端使用&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a></h2>
 				</section>
 				<section id="concept">
-					<h2>前端界面来自&nbsp;<a href="http://rumpetroll.com/">rumpetroll.com</a></h2>
+					<h2>前端界面来自&nbsp;<a href="http://rumpetroll.com/" target="_blank">rumpetroll.com</a></h2>
 				</section>
 			</aside>
             <aside id="frogMode">
