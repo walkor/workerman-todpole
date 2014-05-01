@@ -33,10 +33,9 @@ class Event
            $new_message .= "Sec-WebSocket-Version: 13\r\n";
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
-           $new_message .= pack("H*", '811e').'{"type":"welcome","id":630347}';
-           
            // 把时间戳当成uid
            $uid = substr(strval(microtime(true)), 3, 10)*100;
+           $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
            // 记录uid到gateway通信地址的映射
            GateWay::storeUid($uid);
@@ -97,26 +96,13 @@ class Event
         switch($message_data['type'])
         {
             // 用户登录 message格式: {type:login, name:xx} ，添加到用户，广播给所有用户xx进入聊天室
-            case 'login':
-                // 存储当前用户到用户列表
-                self::addUserToList($uid, htmlspecialchars($message_data['name']));
-                // 获取用户列表
-                $user_list = self::getUserList();
-                // 整理用户列表以便显示
-                $all_users = array();
-                if($user_list)
-                {
-                    foreach($user_list as $tmp_uid=>$name)
-                    {
-                        $all_users[] = array('uid'=>$tmp_uid, 'name'=>$name);
-                    }
-                }
-                
-                // 发送给当前用户 内容是用户列表 message: {type:user_list, user_list:xxxx}
-                Gateway::sendToUid($uid, json_encode(array('type'=>'user_list', 'user_list'=> $all_users)));
-                
-                // 转播给所有用户，xx进入聊天室 message {type:login, uid:xx, name:xx} 
-                Gateway::sendToAll(json_encode(array('type'=>'login', 'uid'=>$uid, 'name'=>htmlspecialchars($message_data['name']), 'time'=>date('Y-m-d H:i:s'))));
+            case 'update':
+                // 转播给所有用户
+                $message_data['id'] = $uid;
+                $message_data['life'] = 1;
+                $message_data['name'] = 'guest';
+                $message_data['authorized'] = false;
+                Gateway::sendToAll(json_encode($message_data));
                 return;
                 
             // 用户发言 message: {type:say, to_uid:xx, content:xx}
@@ -145,48 +131,4 @@ class Event
                 
         }
    }
-   
-   /**
-    * 获得用户列表
-    * @todo 保存有限个
-    */
-   public static function getUserList()
-   {
-       $key = 'alluserlist';
-       return Store::get($key);
-   }
-   
-   /**
-    * 从用户列表中删除一个用户
-    * @param int $uid
-    */
-   public static function delUserFromList($uid)
-   {
-       $key = 'alluserlist';
-       $user_list = self::getUserList();
-       if(isset($user_list[$uid]))
-       {
-           unset($user_list[$uid]);
-           return Store::set($key, $user_list);
-       }
-       return true;
-   }
-   
-   /**
-    * 添加到用户列表中
-    * @param int $uid
-    * @param string $name
-    */
-   public static function addUserToList($uid, $name)
-   {
-       $key = 'alluserlist';
-       $user_list = self::getUserList();
-       if(!isset($user_list[$uid]))
-       {
-           $user_list[$uid] = $name;
-           return Store::set($key, $user_list);
-       }
-       return true;
-   }
-   
 }
