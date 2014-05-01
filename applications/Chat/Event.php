@@ -88,13 +88,9 @@ class Event
         
         switch($message_data['type'])
         {
-            // 用户登录 message格式: {type:login, name:xx} ，添加到用户，广播给所有用户xx进入聊天室
+            // 更新用户
             case 'update':
                 // 转播给所有用户
-                $message_data['id'] = $uid;
-                $message_data['life'] = 1;
-                $message_data['name'] = 'Guest.'.$uid;
-                $message_data['authorized'] = false;
                 Gateway::sendToAll(json_encode(
                         array(
                                 'type'     => 'update',
@@ -109,31 +105,15 @@ class Event
                                 )
                         ));
                 return;
-                
-            // 用户发言 message: {type:say, to_uid:xx, content:xx}
-            case 'say':
-                // 私聊
-                if($message_data['to_uid'] != 'all')
-                {
-                    $new_message = array(
-                        'type'=>'say',
-                        'from_uid'=>$uid, 
-                        'to_uid'=>$message_data['to_uid'],
-                        'content'=>nl2br(htmlspecialchars($message_data['content'])),
-                        'time'=>date('Y-m-d :i:s'),
-                    );
-                    return Gateway::sendToUid($message_data['to_uid'], json_encode($new_message));
-                }
+            // 聊天
+            case 'message':
                 // 向大家说
                 $new_message = array(
-                    'type'=>'say', 
-                    'from_uid'=>$uid,
-                    'to_uid'=>'all',
-                    'content'=>nl2br(htmlspecialchars($message_data['content'])),
-                    'time'=>date('Y-m-d :i:s'),
+                    'type'=>'message', 
+                    'id'=>$uid,
+                    'message'=>nl2br(htmlspecialchars($message_data['message'])),
                 );
                 return Gateway::sendToAll(json_encode($new_message));
-                
         }
    }
 }
