@@ -111,7 +111,7 @@ class Event
                 $new_message = array(
                     'type'=>'message', 
                     'id'=>$uid,
-                    'message'=>nl2br(htmlspecialchars($message_data['message'])),
+                    'message'=>$message_data['message'],
                 );
                 return Gateway::sendToAll(json_encode($new_message));
         }
