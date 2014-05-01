@@ -93,7 +93,7 @@ class Event
                 // 转播给所有用户
                 $message_data['id'] = $uid;
                 $message_data['life'] = 1;
-                $message_data['name'] = 'guest';
+                $message_data['name'] = 'guest.'.$uid;
                 $message_data['authorized'] = false;
                 Gateway::sendToAll(json_encode($message_data));
                 return;
