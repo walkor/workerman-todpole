@@ -33,6 +33,7 @@ class Event
            $new_message .= "Sec-WebSocket-Version: 13\r\n";
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
+           $new_message .= pack("H*", '811e').'{"type":"welcome","id":630347}';
            
            // 把时间戳当成uid
            $uid = substr(strval(microtime(true)), 3, 10)*100;
