@@ -34,7 +34,7 @@ class Event
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
            // 把时间戳当成uid
-           $uid = substr(strval(microtime(true)), 3, 10)*100;
+           $uid = (substr(strval(microtime(true)), 3, 10)*100)%1000000;
            $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
            // 记录uid到gateway通信地址的映射
@@ -62,15 +62,8 @@ class Event
     */
    public static function onClose($uid)
    {
-       // [这步是必须的]删除这个用户的gateway通信地址
-       GateWay::deleteUidAddress($uid);
-
-       // 从用户列表中删除
-       self::delUserFromList($uid);
-
        // 广播 xxx 退出了
-       GateWay::sendToAll(json_encode(array('type'=>'logout', 'uid'=> $uid, 'time'=>date('Y-m-d H:i:s'))));
-       
+       //GateWay::sendToAll(json_encode(array('type'=>'logout', 'uid'=> $uid, 'time'=>date('Y-m-d H:i:s'))));
    }
    
    /**
