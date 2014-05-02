@@ -1,3 +1,3 @@
 var Settings = function() {
-  this.socketServer = 'ws://workerman.net:8280';
+  this.socketServer = 'ws://'+document.domain+':8280';
 }

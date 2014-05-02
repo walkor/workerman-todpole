@@ -22,14 +22,13 @@
 		
 			<input id="chat" type="text" />
 			<div id="chatText"></div>
-		
 			<h1>workerman</h1>
-		
+		<?php if(!is_mobile()){?>
 			<div id="instructions">
 				<h2>介绍</h2>
 				<p>点击屏幕游泳 – 打字聊天!<br />输入 'name: yourname'设置你的名字</p>
 			</div>
-		<aside id="info">
+			<aside id="info">
 			<section id="share">
 				       <a rel="external" href="http://github.com/walkor/workerman-todpole" title="workerman-todpole at GitHub"><img src="css/images/github.png" alt="fork on github"></a>
 			</section>
@@ -41,6 +40,7 @@
 				   <h2>后端使用&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a></h2>
 				</section>
 			</aside>
+			<?php }?>
             <aside id="frogMode">
                 <h3>Frog Mode</h3>
                 <section id="tadpoles">
@@ -101,3 +101,11 @@
 	</body>
 </html>
 
+<?php 
+function is_mobile()
+{
+    //php判断客户端是否为手机
+    $agent = $_SERVER['HTTP_USER_AGENT'];
+    return (strpos($agent,"NetFront") || strpos($agent,"iPhone") || strpos($agent,"MIDP-2.0") || strpos($agent,"Opera Mini") || strpos($agent,"UCWEB") || strpos($agent,"Android") || strpos($agent,"Windows CE") || strpos($agent,"SymbianOS"));
+}
+?>
