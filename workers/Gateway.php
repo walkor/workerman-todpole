@@ -227,6 +227,10 @@ class Gateway extends Man\Core\SocketWorker
     
     public function sendToSocketId($socket_id, $bin_data)
     {
+        if(!isset($this->connections[$socket_id]))
+        {
+            return false;
+        }
         $this->currentDealFd = $socket_id;
         return $this->sendToClient($bin_data);
     }
