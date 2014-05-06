@@ -14,7 +14,7 @@ if(!function_exists('is_mobile'))
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>Workerman-todpole</title>
+		<title>Workerman小蝌蚪互动聊天室 HTML5+Websocket+PHP多进程socket实时推送技术</title>
 		<link rel="stylesheet" type="text/css" href="css/main.css" />
 		<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; minimum-scale=1.0; user-scalable=0;" />		
     <meta name="apple-mobile-web-app-capable" content="YES">
@@ -22,7 +22,7 @@ if(!function_exists('is_mobile'))
 	   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png"/>
 		<meta property="fb:app_id" content="149260988448984" />
 		<meta name="title" content="Workerman-todpole!" />
-		<meta name="description" content="workerman + HTML5+WebSocket 小蝌蚪交互游戏程序 ，坐标实时推送、实时聊天等" />
+		<meta name="description" content="workerman + HTML5+WebSocket +PHP socket 广播 小蝌蚪交互游戏程序 ，坐标实时推送、实时聊天等" />
 		<link rel="image_src" href="/images/fb-image.jpg" / >
 	</head>
 	<body>
@@ -37,11 +37,11 @@ if(!function_exists('is_mobile'))
 		<?php if(!is_mobile()){?>
 			<div id="instructions">
 				<h2>介绍</h2>
-				<p>点击屏幕游泳 – 打字聊天!<br />输入 'name: yourname'设置你的名字</p>
+				<p>直接打字聊天!<br />输入 'name:yourname'设置你的名字</p>
 			</div>
 			<aside id="info">
 			<section id="share">
-				       <a rel="external" href="http://github.com/walkor/workerman-todpole" title="workerman-todpole at GitHub"><img src="css/images/github.png" alt="fork on github"></a>
+				       <a rel="external" href="http://github.com/walkor/workerman-todpole" title="workerman-todpole at GitHub">源代码：<img src="css/images/github.png" alt="fork on github"></a>
 			</section>
 			<section id="wtf">
 				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a></h2>
