@@ -34,7 +34,11 @@ class Event
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
            // 把时间戳当成uid，todpole程序uid固定为6位数字
-           $uid = ((substr(strval(microtime(true)), 6, 7)*100)+100000)%1000000;
+           $uid = (substr(strval(microtime(true)), 6, 7)*100)%1000000;
+           if($uid<100000)
+           {
+               $uid += 100000; 
+           }
            $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
            // 记录uid到gateway通信地址的映射
