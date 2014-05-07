@@ -67,7 +67,7 @@ class Event
    public static function onClose($uid)
    {
        // 广播 xxx 退出了
-       //GateWay::sendToAll();
+       GateWay::sendToAll(json_encode(array('type'=>'closed', 'id'=>$uid)));
    }
    
    /**
@@ -83,7 +83,6 @@ class Event
             return ;
         }
         $message = \App\Common\Protocols\WebSocket::decode($message);
-        echo "uid:$uid onMessage:".var_export($message,true)."\n";
         $message_data = json_decode($message, true);
         if(!$message_data)
         {
