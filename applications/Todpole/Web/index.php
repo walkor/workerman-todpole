@@ -42,7 +42,7 @@ if(!function_exists('is_mobile'))
 			<aside id="info">
 			<section id="share">
 				       <a rel="external" href="http://github.com/walkor/workerman-todpole" title="workerman-todpole at GitHub">源代码：<img src="css/images/github.png" alt="fork on github"></a>
-				       &nbsp;&nbsp;<script type="text/javascript">var _bdhmProtocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cscript src='" + _bdhmProtocol + "hm.baidu.com/h.js%3F609dc2f866ce0133cdf405ea1a45f492' type='text/javascript'%3E%3C/script%3E"));</script>
+				       &nbsp;&nbsp;<script type="text/javascript">var _bdhmProtocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cscript src='" + _bdhmProtocol + "hm.baidu.com/h.js%3Fbb72feea92a614e9bbf03aee4245ac52' type='text/javascript'%3E%3C/script%3E"));</script>
 			</section>
 			<section id="wtf">
 				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a></h2>
