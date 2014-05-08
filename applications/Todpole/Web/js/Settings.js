@@ -1,7 +1,7 @@
 var Settings = function() {
 	// 如果是workerman.net phpgame.cn域名 则采用多个接入端随机负载均衡
 	var domain_arr = ['workerman.net', 'phpgame.cn','www.workerman.net', 'www.phpgame.cn'];
-	if($.inArray(document.domain, domain_arr))
+	if(0 >= $.inArray(document.domain, domain_arr))
 	{
 		this.socketServer = domin_arr[Math.floor(Math.random() * Arr.length + 1)-1];
 	}
