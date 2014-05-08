@@ -3,7 +3,7 @@ var Settings = function() {
 	var domain_arr = ['workerman.net', 'phpgame.cn','www.workerman.net', 'www.phpgame.cn'];
 	if(0 >= $.inArray(document.domain, domain_arr))
 	{
-		this.socketServer = domin_arr[Math.floor(Math.random() * Arr.length + 1)-1];
+		this.socketServer = domain_arr[Math.floor(Math.random() * domain_arr.length + 1)-1];
 	}
 	else
 	{
