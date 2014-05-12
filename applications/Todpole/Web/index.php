@@ -45,7 +45,7 @@ if(!function_exists('is_mobile'))
 				       &nbsp;&nbsp;<script type="text/javascript">var _bdhmProtocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cscript src='" + _bdhmProtocol + "hm.baidu.com/h.js%3Fbb72feea92a614e9bbf03aee4245ac52' type='text/javascript'%3E%3C/script%3E"));</script>
 			</section>
 			<section id="wtf">
-				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a></h2>
+				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a> &nbsp;by&nbsp;&nbsp;by&nbsp;感谢<a href="http://rumpetroll.com/">rumpetroll.com</a>提供的界面</h2>
 			</section>
 			</aside>
 			<?php }?>
