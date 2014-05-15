@@ -7,8 +7,8 @@
  * 
  */
 
-require_once WORKERMAN_ROOT_DIR . 'applications/Todpole/Gateway.php';
-require_once WORKERMAN_ROOT_DIR . 'applications/Common/Protocols/WebSocket.php';
+require_once ROOT_DIR . '/Lib/Gateway.php';
+require_once ROOT_DIR . '/Protocols/WebSocket.php';
 
 class Event
 {
@@ -82,7 +82,7 @@ class Event
         {
             return ;
         }
-        $message = \App\Common\Protocols\WebSocket::decode($message);
+        $message = \WebSocket::decode($message);
         $message_data = json_decode($message, true);
         if(!$message_data)
         {

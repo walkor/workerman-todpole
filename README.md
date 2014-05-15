@@ -1,17 +1,17 @@
 workerman-todpole
 =================
 
-òòò½ÓÎÓ¾½»»¥³ÌĞò-HTLM5+WebSocket+Workerman , rumpetroll server writen using php
+èŒèšªæ¸¸æ³³äº¤äº’ç¨‹åº-HTLM5+WebSocket+Workerman , rumpetroll server writen using php
 
 [DEMO](http://www.workerman.net:8383)
 
-ÔÚ×Ô¼ºµÄ·şÎñÆ÷ÉÏ°²×°²¿Êğ
+åœ¨è‡ªå·±çš„æœåŠ¡å™¨ä¸Šå®‰è£…éƒ¨ç½²
 ==================
 
-1¡¢ÏÂÔØ»òÕßclone´úÂëµ½±¾µØ
+1ã€ä¸‹è½½æˆ–è€…cloneä»£ç åˆ°æœ¬åœ°
 
-2¡¢½øÈëÄ¿Â¼ÔËĞĞ./bin/workermand start
+2ã€è¿›å…¥ç›®å½•è¿è¡Œ./bin/workermand start
 
-3¡¢ä¯ÀÀÆ÷·ÃÎÊµØÖ·  http://ip:8383 ÈçÍ¼£º
+3ã€æµè§ˆå™¨è®¿é—®åœ°å€  http://ip:8383 å¦‚å›¾ï¼š
 
-![Ğ¡òòò½ÓÎÏ·½ØÍ¼](https://github.com/walkor/workerman-todpole/blob/master/applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
+![å°èŒèšªæ¸¸æˆæˆªå›¾](https://github.com/walkor/workerman-todpole/blob/master/applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
