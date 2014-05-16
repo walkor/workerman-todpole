@@ -37,7 +37,7 @@ if(!function_exists('is_mobile'))
 		<?php if(!is_mobile()){?>
 			<div id="instructions">
 				<h2>介绍</h2>
-				<p>直接打字聊天!<br />输入 'name:yourname'设置你的名字</p>
+				<p>直接打字聊天!<br />输入 'name:昵称' 设置你的昵称</p>
 			</div>
 			<aside id="info">
 			<section id="share">
@@ -62,7 +62,7 @@ if(!function_exists('is_mobile'))
             </aside>
 		
 			<div id="cant-connect">
-				哦，与服务器断开连接了。您可以重新刷新页面。
+				与服务器断开连接了。您可以重新刷新页面。
 			</div>
 			<div id="unsupported-browser">
 				<p>
