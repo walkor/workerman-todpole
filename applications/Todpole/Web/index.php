@@ -37,7 +37,7 @@ if(!function_exists('is_mobile'))
 		<?php if(!is_mobile()){?>
 			<div id="instructions">
 				<h2>介绍</h2>
-				<p>直接打字聊天!<br />输入 'name:昵称' 设置你的昵称</p>
+				<p>直接打字聊天!<br />输入 'name: XX' 则会设置你的昵称为XX</p>
 			</div>
 			<aside id="info">
 			<section id="share">
