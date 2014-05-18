@@ -37,12 +37,12 @@ if(!function_exists('is_mobile'))
 		<?php if(!is_mobile()){?>
 			<div id="instructions">
 				<h2>介绍</h2>
-				<p>直接打字聊天!<br />输入 'name: XX' 则会设置你的昵称为XX</p>
+				<p>直接打字聊天!<br />输入 name: XX 则会设置你的昵称为XX</p>
 			</div>
 			<aside id="info">
 			<section id="share">
 				       <a rel="external" href="http://github.com/walkor/workerman-todpole" title="workerman-todpole at GitHub">源代码：<img src="css/images/github.png" alt="fork on github"></a>
-				       &nbsp;&nbsp;<script type="text/javascript">var _bdhmProtocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cscript src='" + _bdhmProtocol + "hm.baidu.com/h.js%3Fbb72feea92a614e9bbf03aee4245ac52' type='text/javascript'%3E%3C/script%3E"));</script>
+				       &nbsp;&nbsp;
 			</section>
 			<section id="wtf">
 				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a> &nbsp;&nbsp;&nbsp;&nbsp;感谢<a href="http://rumpetroll.com/" target="_blank">rumpetroll.com</a>提供的界面</h2>
