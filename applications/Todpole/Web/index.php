@@ -105,6 +105,10 @@ if(!function_exists('is_mobile'))
 		<script src="/js/main.js"></script>
 		
 		<script src="/js/analytics.js"></script>
+<script type="text/javascript">
+var _bdhmProtocol = (("https:" == document.location.protocol) ? " https://" : " http://");
+document.write(unescape("%3Cscript src='" + _bdhmProtocol + "hm.baidu.com/h.js%3F5fedb3bdce89499492c079ab4a8a0323' type='text/javascript'%3E%3C/script%3E"));
+</script>
 		
 	</body>
 </html>
