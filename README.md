@@ -19,4 +19,5 @@ workerman-todpole
 
 非常感谢Rumpetroll
 ===================
-本程序是由 [Rumpetroll](Repo: https://github.com/danielmahal/Rumpetroll) 修改而来，主要是后台由ruby改成了php。非常感谢Rumpetroll出色的工作。
+本程序是由 [Rumpetroll](http://rumpetroll.com) 修改而来，主要是后台由ruby改成了php。非常感谢Rumpetroll出色的工作。  
+原 [Repo: https://github.com/danielmahal/Rumpetroll](https://github.com/danielmahal/Rumpetroll)
