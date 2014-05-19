@@ -15,3 +15,8 @@ workerman-todpole
 3、浏览器访问地址  http://ip:8383 如图：
 
 ![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
+
+
+非常感谢Rumpetroll
+===================
+本程序是由 [Rumpetroll](Repo: https://github.com/danielmahal/Rumpetroll) 修改而来，主要是后台由ruby改成了php。非常感谢Rumpetroll出色的工作。
