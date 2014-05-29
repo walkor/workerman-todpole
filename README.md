@@ -3,7 +3,7 @@ workerman-todpole
 
 蝌蚪游泳交互程序-HTLM5+WebSocket+Workerman , rumpetroll server writen using php
 
-[DEMO](http://www.workerman.net:8383)
+[线上DEMO](http://kedou.workerman.net)
 
 在自己的服务器上安装部署
 ==================
