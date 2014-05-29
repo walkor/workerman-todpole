@@ -8,7 +8,7 @@ workerman-todpole
 在自己的服务器上安装部署
 ==================
 
-1、下载或者clone代码到本地
+1、下载或者clone代码到本地 详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole)
 
 2、进入目录运行./bin/workermand start
 
