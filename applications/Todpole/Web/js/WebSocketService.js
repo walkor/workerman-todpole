@@ -15,7 +15,7 @@ var WebSocketService = function(model, webSocket) {
 		
 		$('#chat').initChat();
 		if($.cookie('todpole_name'))	{
-			this.sendMessage('name:'+$.cookie('todpole_name'));
+			webSocketService.sendMessage('name:'+$.cookie('todpole_name'));
 		}
 	};
 	
