@@ -109,7 +109,7 @@ var WebSocketService = function(model, webSocket) {
 		var regexp = /name: ?(.+)/i;
 		if(regexp.test(msg)) {
 			model.userTadpole.name = msg.match(regexp)[1];
-			$.cookie('todpole_name', model.userTadpole.name);
+			$.cookie('todpole_name', model.userTadpole.name, {expires:14});
 			return;
 		}
 		
