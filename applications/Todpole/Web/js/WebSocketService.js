@@ -14,6 +14,9 @@ var WebSocketService = function(model, webSocket) {
 		delete model.tadpoles[-1];
 		
 		$('#chat').initChat();
+		if($.cookie('todpole_name'))	{
+			this.sendMessage('name:'+$.cookie('todpole_name'));
+		}
 	};
 	
 	this.updateHandler = function(data) {
@@ -106,6 +109,7 @@ var WebSocketService = function(model, webSocket) {
 		var regexp = /name: ?(.+)/i;
 		if(regexp.test(msg)) {
 			model.userTadpole.name = msg.match(regexp)[1];
+			$.cookie('todpole_name', model.userTadpole.name);
 			return;
 		}
 		
