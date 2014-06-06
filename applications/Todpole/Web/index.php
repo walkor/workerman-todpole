@@ -45,7 +45,11 @@ if(!function_exists('is_mobile'))
 				       &nbsp;&nbsp;
 			</section>
 			<section id="wtf">
-				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a> &nbsp;&nbsp;&nbsp;&nbsp;感谢<a href="http://rumpetroll.com/" target="_blank">rumpetroll.com</a>提供的界面</h2>
+			
+			    <!-- 尊重他人劳动成果，请保留原作者相关链接 -->
+				<h2>powered&nbsp;by&nbsp;<a rel="external" href="http://workerman.net/workerman-todpole" target="_blank">workerman</a> &nbsp;&nbsp;&nbsp;&nbsp;感谢 <a href="http://rumpetroll.com/" target="_blank">rumpetroll.com</a></h2>
+				<!-- 尊重他人劳动成果，请保留原作者相关链接 -->
+				
 			</section>
 			</aside>
 			<?php }?>
