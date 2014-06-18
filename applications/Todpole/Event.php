@@ -13,7 +13,7 @@ require_once ROOT_DIR . '/Protocols/WebSocket.php';
 class Event
 {
    /**
-    * 当有用户连接时，会触发该方法
+    * 当有用户连接时，并第一次发送数据时（或者说没调用notifyConnectionSuccess前）会触发该方法
     */
    public static function onConnect($message)
    {
@@ -33,28 +33,29 @@ class Event
            $new_message .= "Sec-WebSocket-Version: 13\r\n";
            $new_message .= "Connection: Upgrade\r\n";
            $new_message .= "Sec-WebSocket-Accept: " . $new_key . "\r\n\r\n";
-           // 把时间戳当成uid，todpole程序uid固定为6位数字
-           $uid = (substr(strval(microtime(true)), 6, 7)*100)%1000000;
-           if($uid<100000)
-           {
-               $uid += 100000; 
-           }
-           $new_message .= pack("H*", '811e').'{"type":"welcome","id":'.$uid.'}';
            
+           GateWay::sendToCurrentUid($new_message);
+           
+           // 把时间戳当成uid，这里也可以根据用户传递的信息，获取uid，例如通过url上的参数
+           $uid = (substr(strval(microtime(true)), 6, 7)*100)%1000000;
+          
            // 记录uid到gateway通信地址的映射
            GateWay::storeUid($uid);
            
            // 发送数据包到address对应的gateway，确认connection成功
            GateWay::notifyConnectionSuccess($uid);
            
+           // 广播给所有用户，该uid登录
+           $new_message ='{"type":"welcome","id":'.$uid.'}';
+           
            // 发送数据包到客户端 完成握手
-           return GateWay::sendToCurrentUid($new_message, true);
+           return GateWay::sendToCurrentUid(\WebSocket::encode($new_message));
        }
        // 如果是flash发来的policy请求
        elseif(trim($message) === '<policy-file-request/>')
        {
            $policy_xml = '<?xml version="1.0"?><cross-domain-policy><site-control permitted-cross-domain-policies="all"/><allow-access-from domain="*" to-ports="*"/></cross-domain-policy>'."\0";
-           return GateWay::sendToCurrentUid($policy_xml, true);
+           return GateWay::sendToCurrentUid($policy_xml);
        }
        
        return null;
@@ -67,7 +68,7 @@ class Event
    public static function onClose($uid)
    {
        // 广播 xxx 退出了
-       GateWay::sendToAll(json_encode(array('type'=>'closed', 'id'=>$uid)));
+       GateWay::sendToAll(\WebSocket::encode(json_encode(array('type'=>'closed', 'id'=>$uid))));
    }
    
    /**
@@ -94,7 +95,7 @@ class Event
             // 更新用户
             case 'update':
                 // 转播给所有用户
-                Gateway::sendToAll(json_encode(
+                Gateway::sendToAll(\WebSocket::encode(json_encode(
                         array(
                                 'type'     => 'update',
                                 'id'         => $uid,
@@ -106,7 +107,7 @@ class Event
                                 'name'           => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$uid,
                                 'authorized'  => false,
                                 )
-                        ));
+                        )));
                 return;
             // 聊天
             case 'message':
@@ -116,7 +117,7 @@ class Event
                     'id'=>$uid,
                     'message'=>$message_data['message'],
                 );
-                return Gateway::sendToAll(json_encode($new_message));
+                return Gateway::sendToAll(\WebSocket::encode(json_encode($new_message)));
         }
    }
 }

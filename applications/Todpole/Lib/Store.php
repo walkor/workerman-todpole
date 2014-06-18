@@ -59,7 +59,7 @@ class Store
             {
                 touch($data_file);
             }
-            self::$dataFileHandle = fopen($data_file, 'r+');
+            self::$dataFileHandle = fopen(__FILE__, 'r');
             if(!self::$dataFileHandle)
             {
                 return false;

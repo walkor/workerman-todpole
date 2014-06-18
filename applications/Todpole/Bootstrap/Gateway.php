@@ -65,7 +65,14 @@ class Gateway extends Man\Core\SocketWorker
         
         // 创建内部通信套接字
         $start_port = Man\Core\Lib\Config::get($this->workerName.'.lan_port_start');
-        $this->lanPort = $start_port - posix_getppid() + posix_getpid();
+        if(function_exists('posix_getppid'))
+        {
+            $this->lanPort = $start_port - posix_getppid() + posix_getpid();
+        }
+        else 
+        {
+            $this->lanPort = $start_port + Thread::getCurrentThreadId()%100;
+        }
         $this->lanIp = Man\Core\Lib\Config::get($this->workerName.'.lan_ip');
         if(!$this->lanIp)
         {
