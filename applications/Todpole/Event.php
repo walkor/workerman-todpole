@@ -36,7 +36,13 @@ class Event
            
            GateWay::sendToCurrentUid($new_message);
            
-           // 把时间戳当成uid，这里也可以根据用户传递的信息，获取uid，例如通过url上的参数
+           /*
+            * 获取uid，uid必须为1-42亿内的数字
+            * 这里作为例子把时间戳当成uid，高并发下这里会有小概率uid冲突，开发者可以使用自己uid获取方法
+            * 一般流程应该是通过用户名 密码从数据库中获取uid
+            * 用户名密码可以放到url中作为参数传递过来，然后自行解析
+            * 例如前端js这样调用 ws = new WebSocket("ws://workerman.net:8280/?name=xxx&password=xxx");
+            */
            $uid = (substr(strval(microtime(true)), 6, 7)*100)%1000000;
           
            // 记录uid到gateway通信地址的映射
@@ -78,7 +84,7 @@ class Event
     */
    public static function onMessage($uid, $message)
    {
-        // $message len < 7 是用户退出了,直接返回，等待socket关闭触发onclose方法
+        // $message len < 7 可能是ping包或者断开连接的包，暂时忽略
         if(strlen($message) < 7)
         {
             return ;
