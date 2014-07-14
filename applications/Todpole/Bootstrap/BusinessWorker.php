@@ -8,6 +8,7 @@
  */
 define('ROOT_DIR', realpath(__DIR__.'/../'));
 require_once ROOT_DIR . '/Lib/Gateway.php';
+require_once ROOT_DIR . '/Lib/StatisticClient.php';
 require_once ROOT_DIR . '/Event.php';
 
 class BusinessWorker extends Man\Core\SocketWorker
@@ -18,6 +19,19 @@ class BusinessWorker extends Man\Core\SocketWorker
      * @var array
      */
     protected $gatewayConnections = array();
+    
+    /**
+     * 连不上的gateway地址
+     * ['ip:port' => retry_count, 'ip:port' => retry_count, ...]
+     * @var array
+     */
+    protected $badGatewayAddress = array();
+    
+    /**
+     * 连接gateway失败重试次数
+     * @var int
+     */
+    const MAX_RETRY_COUNT = 5;
     
     /**
      * 进程启动时初始化
@@ -62,20 +76,43 @@ class BusinessWorker extends Man\Core\SocketWorker
         Context::$local_port = $pack->header['local_port'];
         Context::$socket_id = $pack->header['socket_id'];
         Context::$uid = $pack->header['uid'];
-        switch($pack->header['cmd'])
+        
+        $cmd = $pack->header['cmd'];
+        
+        $interface_map = array(
+                GatewayProtocol::CMD_ON_CONNECTION   => 'CMD_ON_CONNECTION',
+                GatewayProtocol::CMD_ON_MESSAGE          => 'CMD_ON_MESSAGE',
+                GatewayProtocol::CMD_ON_CLOSE                => 'CMD_ON_CLOSE',
+        );
+        $cmd = $pack->header['cmd'];
+        StatisticClient::tick();
+        $module = __CLASS__;
+        $interface = isset($interface_map[$cmd]) ? $interface_map[$cmd] : 'null';
+        $success = 1;
+        $code = 0;
+        $msg = '';
+        try{
+            switch($cmd)
+            {
+                case GatewayProtocol::CMD_ON_CONNECTION:
+                    call_user_func_array(array('Event', 'onConnect'), array($pack->body));
+                    break;
+                case GatewayProtocol::CMD_ON_MESSAGE:
+                    call_user_func_array(array('Event', 'onMessage'), array(Context::$uid, $pack->body));
+                    break;
+                case GatewayProtocol::CMD_ON_CLOSE:
+                    call_user_func_array(array('Event', 'onClose'), array(Context::$uid));
+                    break;
+            }
+        }
+        catch(\Exception $e)
         {
-            case GatewayProtocol::CMD_ON_CONNECTION:
-                $ret = call_user_func_array(array('Event', 'onConnect'), array($pack->body));
-                break;
-            case GatewayProtocol::CMD_ON_MESSAGE:
-                $ret = call_user_func_array(array('Event', 'onMessage'), array(Context::$uid, $pack->body));
-                break;
-            case GatewayProtocol::CMD_ON_CLOSE:
-                $ret = call_user_func_array(array('Event', 'onClose'), array(Context::$uid));
-                break;
+            $success = 0;
+            $code = $e->getCode() > 0 ? $e->getCode() : 500;
+            $msg = 'uid:'.Context::$uid."\tclient_ip:".Context::$client_ip."\n".$e->__toString();
         }
         Context::clear();
-        return $ret;
+        StatisticClient::report($module, $interface, $success, $code, $msg);
     }
     
     /**
@@ -96,12 +133,24 @@ class BusinessWorker extends Man\Core\SocketWorker
             if(!isset($this->gatewayConnections[$addr]))
             {
                 // 执行连接
-                $conn = stream_socket_client("tcp://$addr", $errno, $errstr, 1);
+                $conn = @stream_socket_client("tcp://$addr", $errno, $errstr, 1);
                 if(!$conn)
                 {
-                    $this->notice($errstr);
+                    if(!isset($this->badGatewayAddress[$addr]))
+                    {
+                        $this->badGatewayAddress[$addr] = 0;
+                    }
+                    // 删除连不上的端口
+                    if($this->badGatewayAddress[$addr]++ > self::MAX_RETRY_COUNT)
+                    {
+                        $addresses_list = Store::get($key);
+                        unset($addresses_list[$addr]);
+                        Store::set($key, $addresses_list);
+                        $this->notice("tcp://$addr ".$errstr." del $addr from store", false);
+                    }
                     continue;
                 }
+                unset($this->badGatewayAddress[$addr]);
                 $this->gatewayConnections[$addr] = $conn;
                 stream_set_blocking($this->gatewayConnections[$addr], 0);
                 

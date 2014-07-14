@@ -1,17 +1,27 @@
 <?php
 /**
  * 
- * 聊天主逻辑
+ * 主逻辑
  * 主要是处理 onConnect onMessage onClose 三个方法
  * @author walkor <worker-man@qq.com>
  * 
  */
-
-require_once ROOT_DIR . '/Lib/Gateway.php';
 require_once ROOT_DIR . '/Protocols/WebSocket.php';
 
 class Event
 {
+    /**
+     * 网关有消息时，判断消息是否完整
+     */
+    public static function onGatewayMessage($buffer)
+    {
+        if(0 === strpos($buffer, 'GET') || trim($buffer) === '<policy-file-request/>')
+        {
+            return 0;
+        }
+        return WebSocket::check($buffer);
+    }
+    
    /**
     * 当有用户连接时，并第一次发送数据时（或者说没调用notifyConnectionSuccess前）会触发该方法
     */

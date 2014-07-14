@@ -11,6 +11,8 @@
 define('ROOT_DIR', realpath(__DIR__.'/../'));
 require_once ROOT_DIR . '/Protocols/GatewayProtocol.php';
 require_once ROOT_DIR . '/Lib/Store.php';
+require_once ROOT_DIR . '/Event.php';
+require_once ROOT_DIR . '/Lib/StatisticClient.php';
 
 class Gateway extends Man\Core\SocketWorker
 {
@@ -78,8 +80,11 @@ class Gateway extends Man\Core\SocketWorker
      */
     public function dealInput($recv_str)
     {
-        // 这个聊天demo发送数据量都很小，一般都小于一个ip数据包，所以没有判断长度，直接返回了0，表示数据全部到达
-        // 其它应用应该根据客户端协议来判断数据是否完整
+        // 如果有Event::onGatewayMessage方法通过这个方法检查数据是否接收完整
+        if(method_exists('Event','onGatewayMessage'))
+        {
+            return call_user_func_array(array('Event', 'onGatewayMessage'), array($recv_str));
+        }
         return 0;
     }
     
@@ -90,15 +95,37 @@ class Gateway extends Man\Core\SocketWorker
     public function dealProcess($recv_str)
     {
         // 判断用户是否认证过
+        StatisticClient::tick();
         $from_uid = $this->getUidByFd($this->currentDealFd);
+        $module = __CLASS__;
+        $success = 1;
+        $code = 0;
+        $msg = '';
         // 触发ON_CONNECTION
         if(!$from_uid)
         {
-            return $this->sendToWorker(GatewayProtocol::CMD_ON_CONNECTION, $this->currentDealFd, $recv_str);
+            $interface = 'ON_CONNECTION';
+            $ret = $this->sendToWorker(GatewayProtocol::CMD_ON_CONNECTION, $this->currentDealFd, $recv_str);
+            if($ret === false)
+            {
+                $success = 0;
+                $msg = 'sendToWorker(CMD_ON_CONNECTION, '.$this->currentDealFd.', strlen($recv_str) = '.strlen($recv_str).') fail ';
+                $code = 101;
+            }
         }
-    
-        // 认证过, 触发ON_MESSAGE
-        $this->sendToWorker(GatewayProtocol::CMD_ON_MESSAGE, $this->currentDealFd, $recv_str);
+        else
+        {
+            // 认证过, 触发ON_MESSAGE
+            $interface = 'CMD_ON_MESSAGE';
+            $ret =$this->sendToWorker(GatewayProtocol::CMD_ON_MESSAGE, $this->currentDealFd, $recv_str);
+            if($ret === false)
+            {
+                $success = 0;
+                $msg = 'sendToWorker(CMD_ON_MESSAGE, '.$this->currentDealFd.', strlen($recv_str) = '.strlen($recv_str).') fail ';
+                $code = 102;
+            }
+        }
+        StatisticClient::report($module, $interface, $success, $code, $msg);
     }
     
     /**
@@ -358,24 +385,50 @@ class Gateway extends Man\Core\SocketWorker
     public function innerDealProcess($recv_str)
     {
         $pack = new GatewayProtocol($recv_str);
-        
-        switch($pack->header['cmd'])
+        $interface_map = array(
+                GatewayProtocol::CMD_SEND_TO_ONE             => 'CMD_SEND_TO_ONE',
+                GatewayProtocol::CMD_KICK                              => 'CMD_KICK',
+                GatewayProtocol::CMD_SEND_TO_ALL               => 'CMD_SEND_TO_ALL',
+                GatewayProtocol::CMD_CONNECT_SUCCESS     => 'CMD_CONNECT_SUCCESS',
+        );
+        $cmd = $pack->header['cmd'];
+        StatisticClient::tick();
+        $module = __CLASS__;
+        $interface = isset($interface_map[$cmd]) ? $interface_map[$cmd] : 'null';
+        $success = 1;
+        $code = 0;
+        $msg = '';
+        try
         {
-            case GatewayProtocol::CMD_SEND_TO_ONE:
-                return $this->sendToSocketId($pack->header['socket_id'], $pack->body);
-            case GatewayProtocol::CMD_KICK:
-                if($pack->body)
-                {
+            switch($cmd)
+            {
+                case GatewayProtocol::CMD_SEND_TO_ONE:
                     $this->sendToSocketId($pack->header['socket_id'], $pack->body);
-                }
-                return $this->closeClientBySocketId($pack->header['socket_id']);
-            case GatewayProtocol::CMD_SEND_TO_ALL:
-                return $this->broadCast($pack->body);
-            case GatewayProtocol::CMD_CONNECT_SUCCESS:
-                return $this->connectSuccess($pack->header['socket_id'], $pack->header['uid']);
-            default :
-                $this->notice('gateway inner pack cmd err data:' .$recv_str );
+                    break;
+                case GatewayProtocol::CMD_KICK:
+                    if($pack->body)
+                    {
+                        $this->sendToSocketId($pack->header['socket_id'], $pack->body);
+                    }
+                    $this->closeClientBySocketId($pack->header['socket_id']);
+                    break;
+                case GatewayProtocol::CMD_SEND_TO_ALL:
+                    $this->broadCast($pack->body);
+                    break;
+                case GatewayProtocol::CMD_CONNECT_SUCCESS:
+                    $this->connectSuccess($pack->header['socket_id'], $pack->header['uid']);
+                    break;
+                default :
+                    $this->notice('gateway inner pack cmd err data:' .$recv_str );
+            }
         }
+        catch(\Exception $e)
+        {
+            $success = 0;
+            $code = $e->getCode() > 0 ? $e->getCode() : 500; 
+            $msg = $e->__toString();
+        }
+        StatisticClient::report($module, $interface, $success, $code, $msg);
     }
     
     /**
@@ -468,12 +521,14 @@ class Gateway extends Man\Core\SocketWorker
      */
     protected function closeClient($fd)
     {
+        StatisticClient::tick();
         if($uid = $this->getUidByFd($fd))
         {
             $this->sendToWorker(GatewayProtocol::CMD_ON_CLOSE, $fd);
             unset($this->uidConnMap[$uid], $this->connUidMap[$fd]);
         }
         parent::closeClient($fd);
+        StatisticClient::report(__CLASS__, 'CMD_ON_CLOSE', 1, 0, '');
     }
     
     /**
@@ -514,8 +569,10 @@ class Gateway extends Man\Core\SocketWorker
      */
     protected function sendBufferToWorker($bin_data)
     {
-        $this->currentDealFd = array_rand($this->workerConnections);
-        return $this->sendToClient($bin_data);
+        if($this->currentDealFd = array_rand($this->workerConnections))
+        {
+            $this->sendToClient($bin_data);
+        }
     }
     
     /**
