@@ -15,10 +15,26 @@ class Event
      */
     public static function onGatewayMessage($buffer)
     {
-        if(0 === strpos($buffer, 'GET') || trim($buffer) === '<policy-file-request/>')
+        // 握手阶段客户端发送HTTP协议
+        if(0 === strpos($buffer, 'GET'))
         {
+            // 判断\r\n\r\n边界
+            if(strlen($buffer) - 4 === strpos($buffer, "\r\n\r\n"))
+            {
+                return 0;
+            }
+            return 1;
+        }
+        // 如果是flash的policy-file-request
+        elseif(0 === strpos($buffer,'<polic'))
+        {
+            if('>' != $buffer[strlen($buffer) - 1])
+            {
+                return 1;
+            }
             return 0;
         }
+        // websocket协议
         return WebSocket::check($buffer);
     }
     
