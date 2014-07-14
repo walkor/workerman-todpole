@@ -94,10 +94,11 @@ class Event
     */
    public static function onMessage($uid, $message)
    {
-        // $message len < 7 可能是ping包或者断开连接的包，暂时忽略
-        if(strlen($message) < 7)
+       if(\WebSocket::isClosePacket($message))
         {
-            return ;
+            Gateway::kickUid($uid, '');
+            self::onClose($uid);
+            return;
         }
         $message = \WebSocket::decode($message);
         $message_data = json_decode($message, true);
