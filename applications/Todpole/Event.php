@@ -6,10 +6,24 @@
  * @author walkor <worker-man@qq.com>
  * 
  */
-require_once ROOT_DIR . '/Protocols/WebSocket.php';
+
+use \Lib\Context;
+use \Lib\Gateway;
+use \Lib\StatisticClient;
+use \Lib\Store;
+use \Protocols\GatewayProtocol;
+use \Protocols\WebSocket;
 
 class Event
 {
+    /**
+     * 当网关有客户端链接上来时触发，一般这里留空
+     */
+    public static function onGatewayConnect()
+    {
+        
+    }
+    
     /**
      * 网关有消息时，判断消息是否完整
      */
@@ -62,7 +76,7 @@ class Event
            $new_message ='{"type":"welcome","id":'.$uid.'}';
            
            // 发送数据包到客户端 完成握手
-           return GateWay::sendToCurrentUid(\WebSocket::encode($new_message));
+           return GateWay::sendToCurrentUid(WebSocket::encode($new_message));
        }
        // 如果是flash发来的policy请求
        elseif(trim($message) === '<policy-file-request/>')
@@ -81,7 +95,7 @@ class Event
    public static function onClose($uid)
    {
        // 广播 xxx 退出了
-       GateWay::sendToAll(\WebSocket::encode(json_encode(array('type'=>'closed', 'id'=>$uid))));
+       GateWay::sendToAll(WebSocket::encode(json_encode(array('type'=>'closed', 'id'=>$uid))));
    }
    
    /**
@@ -91,13 +105,13 @@ class Event
     */
    public static function onMessage($uid, $message)
    {
-       if(\WebSocket::isClosePacket($message))
+       if(WebSocket::isClosePacket($message))
         {
             Gateway::kickUid($uid, '');
             self::onClose($uid);
             return;
         }
-        $message = \WebSocket::decode($message);
+        $message = WebSocket::decode($message);
         $message_data = json_decode($message, true);
         if(!$message_data)
         {
@@ -109,7 +123,7 @@ class Event
             // 更新用户
             case 'update':
                 // 转播给所有用户
-                Gateway::sendToAll(\WebSocket::encode(json_encode(
+                Gateway::sendToAll(WebSocket::encode(json_encode(
                         array(
                                 'type'     => 'update',
                                 'id'         => $uid,
@@ -131,7 +145,7 @@ class Event
                     'id'=>$uid,
                     'message'=>$message_data['message'],
                 );
-                return Gateway::sendToAll(\WebSocket::encode(json_encode($new_message)));
+                return Gateway::sendToAll(WebSocket::encode(json_encode($new_message)));
         }
    }
 }

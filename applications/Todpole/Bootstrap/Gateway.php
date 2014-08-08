@@ -8,11 +8,10 @@
  * @author walkor <workerman.net>
  * 
  */
-define('ROOT_DIR', realpath(__DIR__.'/../'));
-require_once ROOT_DIR . '/Protocols/GatewayProtocol.php';
-require_once ROOT_DIR . '/Lib/Store.php';
-require_once ROOT_DIR . '/Event.php';
-require_once ROOT_DIR . '/Lib/StatisticClient.php';
+require_once __DIR__ . '/../Lib/Autoloader.php';
+use \Protocols\GatewayProtocol;
+use \Lib\Store;
+use \Lib\StatisticClient;
 
 class Gateway extends Man\Core\SocketWorker
 {
@@ -53,6 +52,12 @@ class Gateway extends Man\Core\SocketWorker
     protected $connUidMap = array();
     
     /**
+     * uid到session的映射
+     * @var array
+     */
+    protected $socketSessionMap = array();
+    
+    /**
      * 与worker的连接
      * [fd=>fd, $fd=>fd, ..]
      * @var array
@@ -75,17 +80,27 @@ class Gateway extends Man\Core\SocketWorker
     protected $pingData = '';
     
     /**
+     * 命令字，统计用到
+     * @var array
+     */
+    protected static $interfaceMap = array(
+            GatewayProtocol::CMD_SEND_TO_ONE             => 'CMD_SEND_TO_ONE',
+            GatewayProtocol::CMD_KICK                              => 'CMD_KICK',
+            GatewayProtocol::CMD_SEND_TO_ALL               => 'CMD_SEND_TO_ALL',
+            GatewayProtocol::CMD_CONNECT_SUCCESS     => 'CMD_CONNECT_SUCCESS',
+            GatewayProtocol::CMD_UPDATE_SESSION        => 'CMD_UPDATE_SESSION',
+            GatewayProtocol::CMD_GET_ONLINE_STATUS  => 'CMD_GET_ONLINE_STATUS',
+            GatewayProtocol::CMD_IS_ONLINE                    => 'CMD_IS_ONLINE',
+            GatewayProtocol::CMD_ON_GATEWAY_CONNECTION    => 'CMD_ON_GATEWAY_CONNECTION',
+     );
+    
+    /**
      * 由于网络延迟或者socket缓冲区大小的限制，客户端发来的数据可能不会都全部到达，需要根据协议判断数据是否完整
      * @see Man\Core.SocketWorker::dealInput()
      */
     public function dealInput($recv_str)
     {
-        // 如果有Event::onGatewayMessage方法通过这个方法检查数据是否接收完整
-        if(method_exists('Event','onGatewayMessage'))
-        {
-            return call_user_func_array(array('Event', 'onGatewayMessage'), array($recv_str));
-        }
-        return 0;
+        return call_user_func_array(array('Event', 'onGatewayMessage'), array($recv_str));
     }
     
     /**
@@ -207,6 +222,40 @@ class Gateway extends Man\Core\SocketWorker
     }
     
     /**
+     * 接受一个链接
+     * @param resource $socket
+     * @param $null_one $flag
+     * @param $null_two $base
+     * @return void
+     */
+    public function accept($socket, $null_one = null, $null_two = null)
+    {
+        // 获得一个连接
+        $new_connection = @stream_socket_accept($socket, 0);
+        // 可能是惊群效应
+        if(false === $new_connection)
+        {
+            $this->statusInfo['thunder_herd']++;
+            return false;
+        }
+        
+        // 连接的fd序号
+        $fd = (int) $new_connection;
+        $this->connections[$fd] = $new_connection;
+        $this->recvBuffers[$fd] = array('buf'=>'', 'remain_len'=>$this->prereadLength);
+        $this->socketSessionMap[$fd] = '';
+ 
+        // 非阻塞
+        stream_set_blocking($this->connections[$fd], 0);
+        $this->event->add($this->connections[$fd], Man\Core\Events\BaseEvent::EV_READ , array($this, 'dealInputBase'), $fd);
+        
+        // 触发GatewayOnConnection事件
+        $this->sendToWorker(GatewayProtocol::CMD_ON_GATEWAY_CONNECTION, $fd);
+        
+        return $new_connection;
+    }
+    
+    /**
      * 存储全局的通信地址 
      * @param string $address
      */
@@ -215,13 +264,13 @@ class Gateway extends Man\Core\SocketWorker
         // 这里使用了信号量只能实现单机互斥，分布式互斥需要借助于memcache incr 或者其他分布式存储
         \Man\Core\Lib\Mutex::get();
         $key = 'GLOBAL_GATEWAY_ADDRESS';
-        $addresses_list = Store::get($key);
+        $addresses_list = Store::instance('gateway')->get($key);
         if(empty($addresses_list))
         {
             $addresses_list = array();
         }
         $addresses_list[$address] = $address;
-        Store::set($key, $addresses_list);
+        Store::instance('gateway')->set($key, $addresses_list);
         \Man\Core\Lib\Mutex::release();
     }
     
@@ -234,13 +283,13 @@ class Gateway extends Man\Core\SocketWorker
         // 这里使用了信号量只能实现单机互斥，分布式互斥需要借助于memcache incr 或者其他分布式存储
         \Man\Core\Lib\Mutex::get();
         $key = 'GLOBAL_GATEWAY_ADDRESS';
-        $addresses_list = Store::get($key);
+        $addresses_list = Store::instance('gateway')->get($key);
         if(empty($addresses_list))
         {
             $addresses_list = array();
         }
         unset($addresses_list[$address]);
-        Store::set($key, $addresses_list);
+        Store::instance('gateway')->set($key, $addresses_list);
         \Man\Core\Lib\Mutex::release();
     }
     
@@ -385,16 +434,10 @@ class Gateway extends Man\Core\SocketWorker
     public function innerDealProcess($recv_str)
     {
         $pack = new GatewayProtocol($recv_str);
-        $interface_map = array(
-                GatewayProtocol::CMD_SEND_TO_ONE             => 'CMD_SEND_TO_ONE',
-                GatewayProtocol::CMD_KICK                              => 'CMD_KICK',
-                GatewayProtocol::CMD_SEND_TO_ALL               => 'CMD_SEND_TO_ALL',
-                GatewayProtocol::CMD_CONNECT_SUCCESS     => 'CMD_CONNECT_SUCCESS',
-        );
         $cmd = $pack->header['cmd'];
         StatisticClient::tick();
         $module = __CLASS__;
-        $interface = isset($interface_map[$cmd]) ? $interface_map[$cmd] : 'null';
+        $interface = isset(self::$interfaceMap[$cmd]) ? self::$interfaceMap[$cmd] : 'null';
         $success = 1;
         $code = 0;
         $msg = '';
@@ -413,13 +456,42 @@ class Gateway extends Man\Core\SocketWorker
                     $this->closeClientBySocketId($pack->header['socket_id']);
                     break;
                 case GatewayProtocol::CMD_SEND_TO_ALL:
-                    $this->broadCast($pack->body);
+                    if($pack->ext_data)
+                    {
+                        $uid_array = unpack('N*', $pack->ext_data);
+                        foreach($uid_array as $uid)
+                        {
+                            if(isset($this->uidConnMap[$uid]))
+                            {
+                                $this->sendToSocketId($this->uidConnMap[$uid], $pack->body);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        $this->broadCast($pack->body);
+                    }
                     break;
                 case GatewayProtocol::CMD_CONNECT_SUCCESS:
                     $this->connectSuccess($pack->header['socket_id'], $pack->header['uid']);
                     break;
+                case GatewayProtocol::CMD_UPDATE_SESSION:
+                    if(isset($this->socketSessionMap[$pack->header['socket_id']]))
+                    {
+                        $this->socketSessionMap[$pack->header['socket_id']] = $pack->ext_data;
+                    }
+                    break;
+                case GatewayProtocol::CMD_GET_ONLINE_STATUS:
+                    $online_status = json_encode(array_values($this->connUidMap));
+                    stream_socket_sendto($this->innerMainSocketUdp, $online_status, 0, $this->currentClientAddress);
+                    break;
+                case GatewayProtocol::CMD_IS_ONLINE:
+                    stream_socket_sendto($this->innerMainSocketUdp, (int)isset($this->uidConnMap[$pack->header['uid']]), 0, $this->currentClientAddress);
+                    break;
                 default :
-                    $this->notice('gateway inner pack cmd err data:' .$recv_str );
+                    $err_msg = "gateway inner pack err cmd=$cmd";
+                    $this->notice($err_msg);
+                    throw new \Exception($err_msg, 501);
             }
         }
         catch(\Exception $e)
@@ -451,8 +523,9 @@ class Gateway extends Man\Core\SocketWorker
     {
         if($uid = $this->getUidByFd($socket_id))
         {
-            unset($this->uidConnMap[$uid], $this->connUidMap[$socket_id]);
+            unset($this->uidConnMap[$uid]);
         }
+        unset($this->connUidMap[$socket_id], $this->socketSessionMap[$socket_id]);
         parent::closeClient($socket_id);
     }
     
@@ -490,11 +563,15 @@ class Gateway extends Man\Core\SocketWorker
      */
     protected function connectSuccess($socket_id, $uid)
     {
-        $binded_uid = $this->getUidByFd($socket_id);
-        if($binded_uid)
+        if($binded_uid = $this->getUidByFd($socket_id))
         {
-            $this->notice('notify connection success fail ' . $socket_id . ' already binded ');
+            $this->notice('notify connection fail socket:' . $socket_id . ' already binded uid:' . $binded_uid);
             return;
+        }
+        if($binded_socket = $this->getFdByUid($uid))
+        {
+            $this->notice('notify connection warning uid:' . $uid . ' already binded socket:' . $binded_socket);
+            $this->closeClient($binded_socket);
         }
         $this->uidConnMap[$uid] = $socket_id;
         $this->connUidMap[$socket_id] = $uid;
@@ -525,8 +602,9 @@ class Gateway extends Man\Core\SocketWorker
         if($uid = $this->getUidByFd($fd))
         {
             $this->sendToWorker(GatewayProtocol::CMD_ON_CLOSE, $fd);
-            unset($this->uidConnMap[$uid], $this->connUidMap[$fd]);
+            unset($this->uidConnMap[$uid]);
         }
+        unset($this->connUidMap[$fd], $this->socketSessionMap[$fd]);
         parent::closeClient($fd);
         StatisticClient::report(__CLASS__, 'CMD_ON_CLOSE', 1, 0, '');
     }
@@ -550,7 +628,15 @@ class Gateway extends Man\Core\SocketWorker
     protected function sendToWorker($cmd, $socket_id, $body = '')
     {
         $address= $this->getRemoteAddress($socket_id);
-        list($client_ip, $client_port) = explode(':', $address, 2);
+        if($address)
+        {
+            list($client_ip, $client_port) = explode(':', $address, 2);
+        }
+        else
+        {
+            $client_ip = 0;
+            $client_port = 0;
+        }
         $pack = new GatewayProtocol();
         $pack->header['cmd'] = $cmd;
         $pack->header['local_ip'] = $this->lanIp;
@@ -560,6 +646,7 @@ class Gateway extends Man\Core\SocketWorker
         $pack->header['client_port'] = $client_ip;
         $pack->header['uid'] = $this->getUidByFd($socket_id);
         $pack->body = $body;
+        $pack->ext_data = $this->socketSessionMap[$pack->header['socket_id']];
         return $this->sendBufferToWorker($pack->getBuffer());
     }
     
@@ -571,7 +658,7 @@ class Gateway extends Man\Core\SocketWorker
     {
         if($this->currentDealFd = array_rand($this->workerConnections))
         {
-            $this->sendToClient($bin_data);
+            return $this->sendToClient($bin_data);
         }
     }
     
@@ -598,7 +685,7 @@ class Gateway extends Man\Core\SocketWorker
         $this->unregisterAddress($this->lanIp.':'.$this->lanPort);
         foreach($this->connUidMap as $uid)
         {
-            Store::delete($uid);
+            Store::instance('gateway')->delete($uid);
         }
     }
     

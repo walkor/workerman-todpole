@@ -102,6 +102,7 @@ class Checker
                 'stream_socket_server',
                 'stream_socket_client',
                 'pcntl_signal_dispatch',
+                'exec',
         );
         // 获取php.ini中设置的禁用函数
         if($disable_func_string = ini_get("disable_functions"))
@@ -286,7 +287,7 @@ class Checker
         $pid_dir = dirname(WORKERMAN_PID_FILE);
         if(!is_dir($pid_dir))
         {
-            if(!mkdir($pid_dir, true))
+            if(!mkdir($pid_dir, 0777, true))
             {
                 exit("Create dir $pid_dir fail\n");
             }
@@ -294,7 +295,7 @@ class Checker
         
         if(!is_writeable($pid_dir))
         {
-            exit("\n\033[31;40mYou should start the server as root\033[0m\n\n\033[31;40mWorkerman start failed\033[0m\n\n");
+            exit("\n\033[31;40m$pid_dir is not writeable, can't write pid file\033[0m\n\n\033[31;40mWorkerman start failed\033[0m\n\n");
         }
     }
 }
