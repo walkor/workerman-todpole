@@ -37,7 +37,7 @@ class Event
        {
            $new_message ='{"type":"welcome","id":'.$clinet_id.'}';
            // 发送数据包到客户端 
-           return GateWay::sendToCurrentUid(WebSocket::encode($new_message));
+           return GateWay::sendToCurrentClient(WebSocket::encode($new_message));
            return;
        }
        
