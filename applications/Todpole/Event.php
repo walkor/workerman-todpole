@@ -27,15 +27,15 @@ class Event
     
    /**
     * 有消息时
-    * @param int $clinet_id
+    * @param int $client_id
     * @param string $message
     */
-   public static function onMessage($clinet_id, $message)
+   public static function onMessage($client_id, $message)
    {
        // 如果是websocket握手
        if(self::checkHandshake($message))
        {
-           $new_message ='{"type":"welcome","id":'.$clinet_id.'}';
+           $new_message ='{"type":"welcome","id":'.$client_id.'}';
            // 发送数据包到客户端 
            return GateWay::sendToCurrentClient(WebSocket::encode($new_message));
            return;
@@ -44,8 +44,8 @@ class Event
        // websocket 通知连接即将关闭
        if(WebSocket::isClosePacket($message))
         {
-            Gateway::kickClient($clinet_id, '');
-            self::onClose($clinet_id);
+            Gateway::kickClient($client_id, '');
+            self::onClose($client_id);
             return;
         }
         
@@ -65,13 +65,13 @@ class Event
                 Gateway::sendToAll(WebSocket::encode(json_encode(
                         array(
                                 'type'     => 'update',
-                                'id'         => $clinet_id,
+                                'id'         => $client_id,
                                 'angle'   => $message_data["angle"]+0,
                                 'momentum' => $message_data["momentum"]+0,
                                 'x'                   => $message_data["x"]+0,
                                 'y'                   => $message_data["y"]+0,
                                 'life'                => 1,
-                                'name'           => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$clinet_id,
+                                'name'           => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$client_id,
                                 'authorized'  => false,
                                 )
                         )));
@@ -81,7 +81,7 @@ class Event
                 // 向大家说
                 $new_message = array(
                     'type'=>'message', 
-                    'id'=>$clinet_id,
+                    'id'=>$client_id,
                     'message'=>$message_data['message'],
                 );
                 return Gateway::sendToAll(WebSocket::encode(json_encode($new_message)));
@@ -90,12 +90,12 @@ class Event
    
    /**
     * 当用户断开连接时
-    * @param integer $clinet_id 用户id
+    * @param integer $client_id 用户id
     */
-   public static function onClose($clinet_id)
+   public static function onClose($client_id)
    {
        // 广播 xxx 退出了
-       GateWay::sendToAll(WebSocket::encode(json_encode(array('type'=>'closed', 'id'=>$clinet_id))));
+       GateWay::sendToAll(WebSocket::encode(json_encode(array('type'=>'closed', 'id'=>$client_id))));
    }
    
    /**
