@@ -137,28 +137,28 @@ class WebServer extends Man\Core\SocketWorker
      * 确定数据是否接收完整
      * @see Man\Core.SocketWorker::dealInput()
      */
-    public function dealInput($recv_str)
+    public function dealInput($recv_buffer)
     {
-        return Man\Common\Protocols\Http\http_input($recv_str);
+        return Man\Common\Protocols\Http\http_input($recv_buffer);
     }
 
     /**
      * 数据接收完整后处理业务逻辑
      * @see Man\Core.SocketWorker::dealProcess()
      */
-    public function dealProcess($recv_str)
+    public function dealProcess($recv_buffer)
     {
          // http请求处理开始。解析http协议，生成$_POST $_GET $_COOKIE
-        Man\Common\Protocols\Http\http_start($recv_str);
+        Man\Common\Protocols\Http\http_start($recv_buffer);
         
         // 记录访问日志
-        $this->logAccess($recv_str);
+        $this->logAccess($recv_buffer);
         
         // 请求的文件
         $url_info = parse_url($_SERVER['REQUEST_URI']);
         if(!$url_info)
         {
-            Man\Common\Protocols\Http\header('HTTP1.1/ 400 Bad Request');
+            Man\Common\Protocols\Http\header('HTTP/1.1 400 Bad Request');
             return $this->sendToClient(Man\Common\Protocols\Http\http_end('<h1>400 Bad Request</h1>'));
         }
         
@@ -196,13 +196,17 @@ class WebServer extends Man\Core\SocketWorker
             // 判断是否是站点目录里的文件
             if((!($request_realpath = realpath($file)) || !($root_dir_realpath = realpath($root_dir))) || 0 !== strpos($request_realpath, $root_dir_realpath))
             {
-                Man\Common\Protocols\Http\header('HTTP1.1/ 400 Bad Request');
+                Man\Common\Protocols\Http\header('HTTP/1.1 400 Bad Request');
                 return $this->sendToClient(Man\Common\Protocols\Http\http_end('<h1>400 Bad Request</h1>'));
             }
+            
+            $file = realpath($file);
             
             // 如果请求的是php文件
             if($extension == 'php')
             {
+                $cwd = getcwd();
+                chdir($root_dir);
                 ini_set('display_errors', 'off');
                 // 缓冲输出
                 ob_start();
@@ -232,6 +236,7 @@ class WebServer extends Man\Core\SocketWorker
                 $this->sendToClient($buffer);
                 // 执行php每执行一次就退出(原因是有的业务使用了require_once类似的语句，不能重复加载业务逻辑)
                 //return $this->stop();
+                chdir($cwd);
                 return ;
             }
             
@@ -288,7 +293,6 @@ class WebServer extends Man\Core\SocketWorker
             {
                 Man\Common\Protocols\Http\header("Last-Modified: $modified_time");
             }
-            
             // 发送给客户端
            return $this->sendToClient(Man\Common\Protocols\Http\http_end($file_content));
         }
@@ -302,12 +306,12 @@ class WebServer extends Man\Core\SocketWorker
     
     /**
      * 记录访问日志
-     * @param unknown_type $recv_str
+     * @param unknown_type $recv_buffer
      */
-    public function logAccess($recv_str)
+    public function logAccess($recv_buffer)
     {
         // 记录访问日志
-        $log_data = date('Y-m-d H:i:s') . "\t REMOTE:" . $this->getRemoteAddress()."\n$recv_str";
+        $log_data = date('Y-m-d H:i:s') . "\t REMOTE:" . $this->getRemoteAddress()."\n$recv_buffer";
         if(isset(self::$accessLog[$_SERVER['HTTP_HOST']]))
         {
             file_put_contents(self::$accessLog[$_SERVER['HTTP_HOST']], $log_data, FILE_APPEND);
