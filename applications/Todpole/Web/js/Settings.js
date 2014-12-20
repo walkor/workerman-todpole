@@ -9,6 +9,6 @@ var Settings = function() {
 	else
 	{
 		// 运行在其它域名上
-		this.socketServer = 'ws://'+document.domain+':8280';
+		this.socketServer = 'ws://'+document.domain+':8282';
 	}
 }
