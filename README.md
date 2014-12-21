@@ -1,7 +1,7 @@
 workerman-todpole
 =================
 
-蝌蚪游泳交互程序-HTLM5+WebSocket+Workerman , rumpetroll server writen using php
+蝌蚪游泳交互程序 使用PHP（workerman框架）+HTML5开发
 
 [线上DEMO](http://kedou.workerman.net)
 
