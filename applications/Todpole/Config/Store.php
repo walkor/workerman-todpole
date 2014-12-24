@@ -23,9 +23,11 @@ class Store
         '127.0.0.1:22322',
     );
     
-    /* 如果使用文件存储，则在这里设置数据存储的目录，默认/tmp/下
-     * 注意：如果修改了storePath，要将storePath加入到conf/conf.d/FileMonitor.conf的忽略目录中 
-     * 例如 $storePath = '/home/data/',则需要在conf/conf.d/FileMonitor.conf加一行 exclude_path[]=/home/data/
+    /* 
+     * 如果使用文件存储
      */
-    public static $storePath = './logs/workerman-todpole/';
+    public static $storePath = '';
 }
+
+// 如果使用文件存储，使用临时目录存储数据
+Store::$storePath = sys_get_temp_dir() . '/workerman-todpole/';
