@@ -45,7 +45,6 @@ class Event
        if(WebSocket::isClosePacket($message))
         {
             Gateway::kickClient($client_id, '');
-            self::onClose($client_id);
             return;
         }
         
