@@ -10,7 +10,7 @@ workerman-todpole
 
 1、下载或者clone代码到本地 详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole)
 
-2、进入目录运行./bin/workermand start
+2、进入目录运行 php start.php start -d
 
 3、浏览器访问地址  http://ip:8383 如图：
 
