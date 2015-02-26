@@ -9,6 +9,12 @@ use Workerman\Connection\ConnectionInterface;
  */
 class Http implements \Workerman\Protocols\ProtocolInterface
 {
+    /**
+     * 判断包长
+     * @param string $recv_buffer
+     * @param ConnectionInterface $connection
+     * @return int
+     */
     public static function input($recv_buffer, ConnectionInterface $connection)
     {
         if(!strpos($recv_buffer, "\r\n\r\n"))
@@ -21,31 +27,32 @@ class Http implements \Workerman\Protocols\ProtocolInterface
         {
             // find Content-Length
             $match = array();
-            if(preg_match("/\r\nContent-Length: ?(\d*)\r\n/", $header, $match))
+            if(preg_match("/\r\nContent-Length: ?(\d+)/", $header, $match))
             {
                 $content_lenght = $match[1];
+                return $content_lenght;
             }
             else
             {
                 return 0;
             }
-            if($content_lenght <= strlen($body))
-            {
-                return strlen($header)+4+$content_lenght;
-            }
-            return 0;
         }
         else
         {
             return strlen($header)+4;
         }
-        return;
     }
     
+    /**
+     * 从http数据包中解析$_POST、$_GET、$_COOKIE等 
+     * @param string $recv_buffer
+     * @param ConnectionInterface $connection
+     * @return void
+     */
     public static function decode($recv_buffer, ConnectionInterface $connection)
     {
         // 初始化
-        $_POST = $_GET = $_COOKIE = $_REQUEST = $_SESSION =  array();
+        $_POST = $_GET = $_COOKIE = $_REQUEST = $_SESSION = $_FILES =  array();
         $GLOBALS['HTTP_RAW_POST_DATA'] = '';
         // 清空上次的数据
         HttpCache::$header = array();
@@ -65,25 +72,15 @@ class Http implements \Workerman\Protocols\ProtocolInterface
               'HTTP_ACCEPT_ENCODING' => '',
               'HTTP_COOKIE' => '',
               'HTTP_CONNECTION' => '',
-              'REQUEST_TIME' => 0,
               'REMOTE_ADDR' => '',
               'REMOTE_PORT' => '0',
            );
         
         // 将header分割成数组
-        $header_data = explode("\r\n", $recv_buffer);
+        list($http_header, $http_body) = explode("\r\n\r\n", $recv_buffer, 2);
+        $header_data = explode("\r\n", $http_header);
         
         list($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI'], $_SERVER['SERVER_PROTOCOL']) = explode(' ', $header_data[0]);
-        // 需要解析$_POST
-        if($_SERVER['REQUEST_METHOD'] == 'POST')
-        {
-            $tmp = explode("\r\n\r\n", $recv_buffer, 2);
-            parse_str($tmp[1], $_POST);
-        
-            // $GLOBALS['HTTP_RAW_POST_DATA']
-            $GLOBALS['HTTP_RAW_POST_DATA'] = $tmp[1];
-            unset($header_data[count($header_data) - 1]);
-        }
         
         unset($header_data[0]);
         foreach($header_data as $content)
@@ -105,15 +102,13 @@ class Http implements \Workerman\Protocols\ProtocolInterface
                     $_SERVER['SERVER_NAME'] = $tmp[0];
                     if(isset($tmp[1]))
                     {
-                        $_SERVER['SERVER_PORT'] = (int)$tmp[1];
+                        $_SERVER['SERVER_PORT'] = $tmp[1];
                     }
                     break;
                 // cookie
                 case 'cookie':
-                    {
-                        $_SERVER['HTTP_COOKIE'] = $value;
-                        parse_str(str_replace('; ', '&', $_SERVER['HTTP_COOKIE']), $_COOKIE);
-                    }
+                    $_SERVER['HTTP_COOKIE'] = $value;
+                    parse_str(str_replace('; ', '&', $_SERVER['HTTP_COOKIE']), $_COOKIE);
                     break;
                 // user-agent
                 case 'user-agent':
@@ -134,14 +129,6 @@ class Http implements \Workerman\Protocols\ProtocolInterface
                 // connection
                 case 'connection':
                     $_SERVER['HTTP_CONNECTION'] = $value;
-                    if(strtolower($value) === 'keep-alive')
-                    {
-                        HttpCache::$header['Connection'] = 'Connection: Keep-Alive';
-                    }
-                    else
-                    {
-                        HttpCache::$header['Connection'] = 'Connection: Closed';
-                    }
                     break;
                 case 'referer':
                     $_SERVER['HTTP_REFERER'] = $value;
@@ -152,12 +139,34 @@ class Http implements \Workerman\Protocols\ProtocolInterface
                 case 'if-none-match':
                     $_SERVER['HTTP_IF_NONE_MATCH'] = $value;
                     break;
+                case 'content-type':
+                    if(!preg_match('/boundary="?(\S+)"?/', $value, $match))
+                    {
+                        $_SERVER['CONTENT_TYPE'] = $value;
+                    }
+                    else
+                    {
+                        $_SERVER['CONTENT_TYPE'] = 'multipart/form-data';
+                        $http_post_boundary = '--'.$match[1];
+                    }
+                    break;
             }
         }
         
-        // 'REQUEST_TIME_FLOAT' => 1375774613.237,
-        $_SERVER['REQUEST_TIME_FLOAT'] = microtime(true);
-        $_SERVER['REQUEST_TIME'] = intval($_SERVER['REQUEST_TIME_FLOAT']);
+        // 需要解析$_POST
+        if($_SERVER['REQUEST_METHOD'] == 'POST')
+        {
+            if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'multipart/form-data')
+            {
+                self::parseUploadFiles($http_body, $http_post_boundary);
+            }
+            else
+            {
+                parse_str($http_body, $_POST);
+                // $GLOBALS['HTTP_RAW_POST_DATA']
+                $GLOBALS['HTTP_RAW_POST_DATA'] = $http_body;
+            }
+        }
         
         // QUERY_STRING
         $_SERVER['QUERY_STRING'] = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
@@ -173,6 +182,12 @@ class Http implements \Workerman\Protocols\ProtocolInterface
         $_SERVER['REMOTE_PORT'] = $connection->getRemotePort();
     }
     
+    /**
+     * 编码，增加HTTP头
+     * @param string $content
+     * @param ConnectionInterface $connection
+     * @return string
+     */
     public static function encode($content, ConnectionInterface $connection)
     {
         // 没有http-code默认给个
@@ -224,6 +239,10 @@ class Http implements \Workerman\Protocols\ProtocolInterface
      */
     public static function header($content, $replace = true, $http_response_code = 0)
     {
+        if(PHP_SAPI != 'cli')
+        {
+            return $http_response_code ? header($content, $replace, $http_response_code) : header($content, $replace);
+        }
         if(strpos($content, 'HTTP') === 0)
         {
             $key = 'Http-Code';
@@ -239,7 +258,7 @@ class Http implements \Workerman\Protocols\ProtocolInterface
     
         if('location' == strtolower($key) && !$http_response_code)
         {
-            return header($content, true, 302);
+            return self::header($content, true, 302);
         }
     
         if(isset(HttpCache::$codes[$http_response_code]))
@@ -270,6 +289,10 @@ class Http implements \Workerman\Protocols\ProtocolInterface
      */
     public static function headerRemove($name)
     {
+        if(PHP_SAPI != 'cli')
+        {
+            return header_remove($name);
+        }
         unset( HttpCache::$header[$name]);
     }
     
@@ -284,7 +307,11 @@ class Http implements \Workerman\Protocols\ProtocolInterface
      * @param bool $HTTPOnly
      */
     public static function setcookie($name, $value = '', $maxage = 0, $path = '', $domain = '', $secure = false, $HTTPOnly = false) {
-        header(
+        if(PHP_SAPI != 'cli')
+        {
+            return setcookie($name, $value, $maxage, $path, $domain, $secure, $HTTPOnly);
+        }
+        return self::header(
                 'Set-Cookie: ' . $name . '=' . rawurlencode($value)
                 . (empty($domain) ? '' : '; Domain=' . $domain)
                 . (empty($maxage) ? '' : '; Max-Age=' . $maxage)
@@ -295,10 +322,14 @@ class Http implements \Workerman\Protocols\ProtocolInterface
     
     /**
      * sessionStart
-     *
+     * @return bool
      */
     public static function sessionStart()
     {
+        if(PHP_SAPI != 'cli')
+        {
+            return session_start();
+        }
         if(HttpCache::$instance->sessionStarted)
         {
             echo "already sessionStarted\nn";
@@ -315,7 +346,7 @@ class Http implements \Workerman\Protocols\ProtocolInterface
             }
             HttpCache::$instance->sessionFile = $file_name;
             $session_id = substr(basename($file_name), strlen('sess_'));
-            return setcookie(
+            return self::setcookie(
                     HttpCache::$sessionName
                     , $session_id
                     , ini_get('session.cookie_lifetime')
@@ -342,9 +373,14 @@ class Http implements \Workerman\Protocols\ProtocolInterface
     
     /**
      * 保存session
+     * @return bool
      */
     public static function sessionWriteClose()
     {
+        if(PHP_SAPI != 'cli')
+        {
+            return session_write_close();
+        }
         if(!empty(HttpCache::$instance->sessionStarted) && !empty($_SESSION))
         {
             $session_str = session_encode();
@@ -363,6 +399,10 @@ class Http implements \Workerman\Protocols\ProtocolInterface
      */
     public static function end($msg = '')
     {
+        if(PHP_SAPI != 'cli')
+        {
+            exit($msg);
+        }
         if($msg)
         {
             echo $msg;
@@ -376,6 +416,54 @@ class Http implements \Workerman\Protocols\ProtocolInterface
     public static function getMimeTypesFile()
     {
         return __DIR__.'/Http/mime.types';
+    }
+    
+     /**
+     * 解析$_FILES
+     */
+    protected function parseUploadFiles($http_body, $http_post_boundary)
+    {
+        $http_body = substr($http_body, 0, strlen($http_body) - (strlen($http_post_boundary) + 4));
+        $boundary_data_array = explode($http_post_boundary."\r\n", $http_body);
+        if($boundary_data_array[0] === '')
+        {
+            unset($boundary_data_array[0]);
+        }
+        foreach($boundary_data_array as $boundary_data_buffer)
+        {
+            list($boundary_header_buffer, $boundary_value) = explode("\r\n\r\n", $boundary_data_buffer, 2);
+            // 去掉末尾\r\n
+            $boundary_value = substr($boundary_value, 0, -2);
+            foreach (explode("\r\n", $boundary_header_buffer) as $item)
+            {
+                list($header_key, $header_value) = explode(": ", $item);
+                $header_key = strtolower($header_key);
+                switch ($header_key)
+                {
+                    case "content-disposition":
+                        // 是文件
+                        if(preg_match('/name=".*?"; filename="(.*?)"$/', $header_value, $match))
+                        {
+                            $_FILES[] = array(
+                                'file_name' => $match[1],
+                                'file_data' => $boundary_value,
+                                'file_size' => strlen($boundary_value),
+                            );
+                            continue;
+                        }
+                        // 是post field
+                        else
+                        {
+                            // 收集post
+                            if(preg_match('/name="(.*?)"$/', $header_value, $match))
+                            {
+                                $_POST[$match[1]] = $boundary_value;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
     }
 }
 

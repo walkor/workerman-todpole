@@ -6,7 +6,6 @@ namespace GatewayWorker\Lib;
  * @author walkor <walkor@workerman.net>
  * 
  */
-require_once __DIR__ . '/Autoloader.php';
 use \Workerman\Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Store;
 use \GatewayWorker\Lib\Context;
@@ -21,7 +20,7 @@ class Gateway
     
    /**
     * 向所有客户端(或者client_id_array指定的客户端)广播消息
-    * @param string $message 向客户端发送的消息（可以是二进制数据）
+    * @param string $message 向客户端发送的消息
     * @param array $client_id_array 客户端id数组
     */
    public static function sendToAll($message, $client_id_array = null)
@@ -52,6 +51,10 @@ class Gateway
        else
        {
            $all_addresses = Store::instance('gateway')->get('GLOBAL_GATEWAY_ADDRESS');
+           if(!$all_addresses)
+           {
+               throw new \Exception('GLOBAL_GATEWAY_ADDRESS is ' . var_export($all_addresses, true));
+           }
            foreach($all_addresses as $address)
            {
                self::sendToGateway($address, $gateway_data);
