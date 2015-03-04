@@ -21,7 +21,7 @@ class Worker
      * 版本号
      * @var string
      */
-    const VERSION = '3.0.6';
+    const VERSION = '3.0.7';
     
     /**
      * 状态 启动中
@@ -122,6 +122,18 @@ class Worker
      * @var callback
      */
     public $onError = null;
+    
+    /**
+     * 当连接的发送缓冲区满时，如果设置了$onBufferFull回调，则执行
+     * @var callback
+     */
+    public $onBufferFull = null;
+    
+    /**
+     * 当链接的发送缓冲区被清空时，如果设置了$onBufferDrain回调，则执行
+     * @var callback
+     */
+    public $onBufferDrain = null;
     
     /**
      * 当前进程退出时（由于平滑重启或者服务停止导致），如果设置了此回调，则运行
@@ -1202,6 +1214,8 @@ class Worker
         $connection->onMessage = $this->onMessage;
         $connection->onClose = $this->onClose;
         $connection->onError = $this->onError;
+        $connection->onBufferDrain = $this->onBufferDrain;
+        $connection->onBufferFull = $this->onBufferFull;
         
         // 如果有设置连接回调，则执行
         if($this->onConnect)
@@ -1229,14 +1243,14 @@ class Worker
         {
             return false;
         }
-        
+        // 模拟一个连接对象
         $connection = new UdpConnection($socket, $remote_address);
         if($this->onMessage)
         {
             $parser = $this->_protocol;
+            ConnectionInterface::$statistics['total_request']++;
             try
             {
-               ConnectionInterface::$statistics['total_request']++;
                call_user_func($this->onMessage, $connection, $parser::decode($recv_buffer, $connection));
             }
             catch(Exception $e)

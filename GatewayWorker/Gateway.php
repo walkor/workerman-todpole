@@ -6,6 +6,7 @@ use \Workerman\Lib\Timer;
 use \Workerman\Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Lock;
 use \GatewayWorker\Lib\Store;
+use \Workerman\Autoloader;
 
 /**
  * 
@@ -214,7 +215,7 @@ class Gateway extends Worker
         {
             if(false === $this->_workerConnections[$key]->send($gateway_data))
             {
-                $msg = "sendBufferToWorker fail. May be the send buffer are overflow";
+                $msg = "SendBufferToWorker fail. May be the send buffer are overflow";
                 $this->log($msg);
                 return false;
             }
@@ -222,8 +223,9 @@ class Gateway extends Worker
         // 没有可用的worker
         else
         {
-            $msg = "endBufferToWorker fail. the connections between Gateway and BusinessWorker are not ready";
+            $msg = "SendBufferToWorker fail. The connections between Gateway and BusinessWorker are not ready";
             $this->log($msg);
+            $connection->close();
             return false;
         }
         return true;
@@ -334,6 +336,9 @@ class Gateway extends Worker
         $this->_innerUdpWorker->transport = 'udp';
         $this->_innerUdpWorker->listen();
     
+        // 重新设置自动加载根目录
+        Autoloader::setRootPath($this->_appInitPath);
+        
         // 设置内部监听的相关回调
         $this->_innerTcpWorker->onMessage = array($this, 'onWorkerMessage');
         $this->_innerUdpWorker->onMessage = array($this, 'onWorkerMessage');
