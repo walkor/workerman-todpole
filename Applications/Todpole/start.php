@@ -1,21 +1,23 @@
 <?php 
+use \Workerman\Worker;
 use \Workerman\WebServer;
 use \GatewayWorker\Gateway;
 use \GatewayWorker\BusinessWorker;
 
-// gateway
+// gateway 进程
 $gateway = new Gateway("Websocket://0.0.0.0:8282");
-
+// gateway名称，status方便查看
 $gateway->name = 'TodpoleGateway';
-
+// gateway进程数
 $gateway->count = 4;
-
+// 本机ip，分布式部署时使用内网ip
 $gateway->lanIp = '127.0.0.1';
-
+// 内部通讯起始端口，假如$gateway->count=4，起始端口为4000
+// 则一般会使用4001 4002 4003 4004 4个端口作为内部通讯端口 
 $gateway->startPort = 2000;
-
+// 心跳间隔
 $gateway->pingInterval = 10;
-
+// 心跳数据
 $gateway->pingData = '{"type":"ping"}';
 
 /* 
@@ -37,17 +39,24 @@ $gateway->onConnect = function($connection)
 */
 
 
-// bussinessWorker
+// bussinessWorker 进程
 $worker = new BusinessWorker();
-
+// worker名称
 $worker->name = 'TodpoleBusinessWorker';
-
+// bussinessWorker进程数量
 $worker->count = 4;
-
 
 // WebServer
 $web = new WebServer("http://0.0.0.0:8383");
-
+// WebServer数量
 $web->count = 2;
+// 设置站点根目录
+$web->addRoot('www.your_domain.com', __DIR__.'/Web');
 
-$web->addRoot('www.workerman.net', __DIR__.'/Web');
+
+// 如果不是在根目录启动，则运行runAll方法
+if(!defined('GLOBAL_START'))
+{
+    Worker::runAll();
+}
+
