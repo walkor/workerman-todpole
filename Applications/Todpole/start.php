@@ -4,6 +4,9 @@ use \Workerman\WebServer;
 use \GatewayWorker\Gateway;
 use \GatewayWorker\BusinessWorker;
 
+// 自动加载类
+require_once __DIR__ . '/../../Workerman/Autoloader.php';
+
 // gateway 进程
 $gateway = new Gateway("Websocket://0.0.0.0:8282");
 // gateway名称，status方便查看
