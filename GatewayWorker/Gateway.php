@@ -55,6 +55,12 @@ class Gateway extends Worker
     public $pingData = '';
     
     /**
+     * 路由函数
+     * @var callback
+     */
+    public $router = null;
+    
+    /**
      * 保存客户端的所有connection对象
      * @var array
      */
@@ -122,6 +128,8 @@ class Gateway extends Worker
     public function __construct($socket_name, $context_option = array())
     {
         parent::__construct($socket_name, $context_option);
+        
+        $this->router = array("\\GatewayWorker\\Gateway", 'routerRand');
         
         $backrace = debug_backtrace();
         $this->_appInitPath = dirname($backrace[0]['file']);
@@ -219,11 +227,11 @@ class Gateway extends Worker
         $gateway_data['cmd'] = $cmd;
         $gateway_data['body'] = $body;
         $gateway_data['ext_data'] = $connection->session;
-        // 随机选择一个worker处理
-        $key = array_rand($this->_workerConnections);
-        if($key)
+        if($this->_workerConnections)
         {
-            if(false === $this->_workerConnections[$key]->send($gateway_data))
+            // 调用路由函数，选择一个worker把请求转发给它
+            $worker_connection = call_user_func($this->router, $this->_workerConnections, $connection, $cmd, $body);
+            if(false === $worker_connection->send($gateway_data))
             {
                 $msg = "SendBufferToWorker fail. May be the send buffer are overflow";
                 $this->log($msg);
@@ -247,6 +255,19 @@ class Gateway extends Worker
     }
     
     /**
+     * 随机路由，返回worker connection对象
+     * @param array $worker_connections
+     * @param TcpConnection $client_connection
+     * @param int $cmd
+     * @param mixed $buffer
+     * @return TcpConnection
+     */
+    public static function routerRand($worker_connections, $client_connection, $cmd, $buffer)
+    {
+        return $worker_connections[array_rand($worker_connections)];
+    }
+    
+    /**
      * 保存客户端连接的gateway通讯地址
      * @param int $global_client_id
      * @param string $address
@@ -254,7 +275,7 @@ class Gateway extends Worker
      */
     protected function storeClientAddress($global_client_id, $address)
     {
-        if(!Store::instance('gateway')->set('gateway-'.$global_client_id, $address))
+        if(!Store::instance('gateway')->set('client_id-'.$global_client_id, $address))
         {
             $msg = 'storeClientAddress fail.';
             if(get_class(Store::instance('gateway')) == 'Memcached')
@@ -274,7 +295,7 @@ class Gateway extends Worker
      */
     protected function delClientAddress($global_client_id)
     {
-        Store::instance('gateway')->delete('gateway-'.$global_client_id);
+        Store::instance('gateway')->delete('client_id-'.$global_client_id);
     }
     
     /**
@@ -303,7 +324,7 @@ class Gateway extends Worker
      */
     protected function createGlobalClientId()
     {
-        $global_socket_key = 'GLOBAL_SOCKET_ID_KEY';
+        $global_socket_key = 'GLOBAL_CLIENT_ID_KEY';
         $store = Store::instance('gateway');
         $global_client_id = $store->increment($global_socket_key);
         if(!$global_client_id || $global_client_id > 2147483646)
