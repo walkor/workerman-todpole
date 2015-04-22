@@ -21,7 +21,7 @@ class Worker
      * 版本号
      * @var string
      */
-    const VERSION = '3.1.3';
+    const VERSION = '3.1.4';
     
     /**
      * 状态 启动中
@@ -1279,8 +1279,7 @@ class Worker
         {
             return;
         }
-        // 统计数据
-        ConnectionInterface::$statistics['connection_count']++;
+        
         // 初始化连接对象
         $connection = new TcpConnection($new_socket);
         $connection->worker = $this;
@@ -1322,11 +1321,15 @@ class Worker
         $connection = new UdpConnection($socket, $remote_address);
         if($this->onMessage)
         {
-            $parser = $this->_protocol;
+            if($this->_protocol)
+            {
+                $parser = $this->_protocol;
+                $recv_buffer = $parser::decode($recv_buffer, $connection);
+            }
             ConnectionInterface::$statistics['total_request']++;
             try
             {
-               call_user_func($this->onMessage, $connection, $parser::decode($recv_buffer, $connection));
+               call_user_func($this->onMessage, $connection, $recv_buffer);
             }
             catch(Exception $e)
             {
