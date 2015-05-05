@@ -24,6 +24,8 @@ class Store
     const DRIVER_FILE = 1;
     // 使用memcache存储，支持workerman分布式部署
     const DRIVER_MC = 2;
+    // 使用redis存储，支持workerman分布式部署
+    const DRIVER_REDIS = 3;
     
     /* 使用哪种存储驱动 文件存储DRIVER_FILE 或者 memcache存储DRIVER_MC，为了更好的性能请使用DRIVER_MC
      * 注意： DRIVER_FILE只适合开发环境，生产环境或者压测请使用DRIVER_MC，需要php cli 安装memcache扩展
