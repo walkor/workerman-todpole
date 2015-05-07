@@ -1,5 +1,19 @@
 <?php 
+/**
+ * This file is part of workerman.
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the MIT-LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @author walkor<walkor@workerman.net>
+ * @copyright walkor<walkor@workerman.net>
+ * @link http://www.workerman.net/
+ * @license http://www.opensource.org/licenses/mit-license.php MIT License
+ */
 namespace GatewayWorker;
+
+use Workerman\Connection\TcpConnection;
 
 use \Workerman\Worker;
 use \Workerman\Lib\Timer;
@@ -171,7 +185,7 @@ class Gateway extends Worker
      */
     public function onClientMessage($connection, $data)
     {
-        $connection->pingNotResponseCount = 0;
+        $connection->pingNotResponseCount = -1;
         $this->sendToWorker(GatewayProtocol::CMD_ON_MESSAGE, $connection, $data);
     }
     
@@ -195,7 +209,7 @@ class Gateway extends Worker
         // 连接的session
         $connection->session = '';
         // 该连接的心跳参数
-        $connection->pingNotResponseCount = 0;
+        $connection->pingNotResponseCount = -1;
         // 保存客户端连接connection对象
         $this->_clientConnections[$connection->globalClientId] = $connection;
         // 保存该连接的内部gateway通讯地址
@@ -353,7 +367,7 @@ class Gateway extends Worker
     public function onWorkerStart()
     {
         // 分配一个内部通讯端口
-        $this->lanPort = $this->startPort - posix_getppid() + posix_getpid();
+        $this->lanPort = function_exists('posix_getppid') ? $this->startPort - posix_getppid() + posix_getpid() : $this->startPort;
         if($this->lanPort<0 || $this->lanPort >=65535)
         {
             $this->lanPort = rand($this->startPort, 65535);
@@ -403,6 +417,10 @@ class Gateway extends Worker
     public function onWorkerConnect($connection)
     {
         $connection->remoteAddress = $connection->getRemoteIp().':'.$connection->getRemotePort();
+        if(TcpConnection::$defaultMaxSendBufferSize == $connection->maxSendBufferSize)
+        {
+            $connection->maxSendBufferSize = 10*1024*1024;
+        }
         $this->_workerConnections[$connection->remoteAddress] = $connection;
     }
     
@@ -518,7 +536,7 @@ class Gateway extends Worker
             Lock::release();
             if(get_class($store) == 'Memcached')
             {
-                $msg = " registerAddress fail : " . $store->getResultMessage();
+                $msg = " registerAddress fail : Memcache Error " . $store->getResultMessage();
             }
             $this->log($msg);
             return false;
@@ -583,10 +601,13 @@ class Gateway extends Worker
                 $connection->destroy();
                 continue;
             }
-            $connection->pingNotResponseCount++;
-            if($this->pingData)
+            // $connection->pingNotResponseCount为-1说明最近客户端有发来消息，则不给客户端发送心跳
+            if($connection->pingNotResponseCount++ >= 0)
             {
-                $connection->send($this->pingData);
+                if($this->pingData)
+                {
+                    $connection->send($this->pingData);
+                }
             }
         }
     }
