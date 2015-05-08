@@ -1,11 +1,22 @@
 <?php 
+/**
+ * This file is part of workerman.
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the MIT-LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @author walkor<walkor@workerman.net>
+ * @copyright walkor<walkor@workerman.net>
+ * @link http://www.workerman.net/
+ * @license http://www.opensource.org/licenses/mit-license.php MIT License
+ */
 namespace  Workerman\Protocols;
 
 use Workerman\Connection\TcpConnection;
 
 /**
  * http protocol
- * @author walkor<walkor@workerman.net>
  */
 class Http
 {
@@ -160,9 +171,9 @@ class Http
         }
         
         // 需要解析$_POST
-        if($_SERVER['REQUEST_METHOD'] == 'POST')
+        if($_SERVER['REQUEST_METHOD'] === 'POST')
         {
-            if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'multipart/form-data')
+            if(isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'multipart/form-data')
             {
                 self::parseUploadFiles($http_body, $http_post_boundary);
             }
@@ -193,7 +204,7 @@ class Http
         $_SERVER['REMOTE_ADDR'] = $connection->getRemoteIp();
         $_SERVER['REMOTE_PORT'] = $connection->getRemotePort();
         
-        return $recv_buffer;
+        return array('get'=>$_GET, 'post'=>$_POST, 'cookie'=>$_COOKIE, 'server'=>$_SERVER, 'files'=>$_FILES);
     }
     
     /**
@@ -224,7 +235,7 @@ class Http
         // other headers
         foreach(HttpCache::$header as $key=>$item)
         {
-            if('Set-Cookie' == $key && is_array($item))
+            if('Set-Cookie' === $key && is_array($item))
             {
                 foreach($item as $it)
                 {
@@ -270,7 +281,7 @@ class Http
             }
         }
     
-        if('location' == strtolower($key) && !$http_response_code)
+        if('location' === strtolower($key) && !$http_response_code)
         {
             return self::header($content, true, 302);
         }
@@ -278,13 +289,13 @@ class Http
         if(isset(HttpCache::$codes[$http_response_code]))
         {
             HttpCache::$header['Http-Code'] = "HTTP/1.1 $http_response_code " .  HttpCache::$codes[$http_response_code];
-            if($key == 'Http-Code')
+            if($key === 'Http-Code')
             {
                 return true;
             }
         }
     
-        if($key == 'Set-Cookie')
+        if($key === 'Set-Cookie')
         {
             HttpCache::$header[$key][] = $content;
         }
@@ -351,15 +362,15 @@ class Http
         }
         HttpCache::$instance->sessionStarted = true;
         // 没有sid，则创建一个session文件，生成一个sid
-        if(!isset($_COOKIE[HttpCache::$sessionName]) || !is_file(HttpCache::$sessionPath . '/sess_' . $_COOKIE[HttpCache::$sessionName]))
+        if(!isset($_COOKIE[HttpCache::$sessionName]) || !is_file(HttpCache::$sessionPath . '/ses' . $_COOKIE[HttpCache::$sessionName]))
         {
-            $file_name = tempnam(HttpCache::$sessionPath, 'sess_');
+            $file_name = tempnam(HttpCache::$sessionPath, 'ses');
             if(!$file_name)
             {
                 return false;
             }
             HttpCache::$instance->sessionFile = $file_name;
-            $session_id = substr(basename($file_name), strlen('sess_'));
+            $session_id = substr(basename($file_name), strlen('ses'));
             return self::setcookie(
                     HttpCache::$sessionName
                     , $session_id
@@ -372,7 +383,7 @@ class Http
         }
         if(!HttpCache::$instance->sessionFile)
         {
-            HttpCache::$instance->sessionFile = HttpCache::$sessionPath . '/sess_' . $_COOKIE[HttpCache::$sessionName];
+            HttpCache::$instance->sessionFile = HttpCache::$sessionPath . '/ses' . $_COOKIE[HttpCache::$sessionName];
         }
         // 有sid则打开文件，读取session值
         if(HttpCache::$instance->sessionFile)

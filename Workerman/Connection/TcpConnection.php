@@ -1,4 +1,16 @@
 <?php
+/**
+ * This file is part of workerman.
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the MIT-LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @author walkor<walkor@workerman.net>
+ * @copyright walkor<walkor@workerman.net>
+ * @link http://www.workerman.net/
+ * @license http://www.opensource.org/licenses/mit-license.php MIT License
+ */
 namespace Workerman\Connection;
 
 use Workerman\Events\Libevent;
@@ -9,7 +21,6 @@ use \Exception;
 
 /**
  * Tcp连接类 
- * @author walkor<walkor@workerman.net>
  */
 class TcpConnection extends ConnectionInterface
 {
@@ -94,14 +105,21 @@ class TcpConnection extends ConnectionInterface
     public $id = 0;
     
     /**
-     * 发送缓冲区大小，当发送缓冲区满时，会尝试触发onBufferFull回调（如果有设置的话）
+     * 设置当前连接的最大发送缓冲区大小，默认大小为TcpConnection::$defaultMaxSendBufferSize
+     * 当发送缓冲区满时，会尝试触发onBufferFull回调（如果有设置的话）
      * 如果没设置onBufferFull回调，由于发送缓冲区满，则后续发送的数据将被丢弃，
-     * 直到发送缓冲区有空的位置
+     * 并触发onError回调，直到发送缓冲区有空位
      * 注意 此值可以动态设置
-     * 例如 Workerman\Connection\TcpConnection::$maxSendBufferSize=1024000;
      * @var int
      */
-    public static $maxSendBufferSize = 1048576;
+    public $maxSendBufferSize = 1048576;
+    
+    /**
+     * 默认发送缓冲区大小，设置此属性会影响所有连接的默认发送缓冲区大小
+     * 如果想设置某个连接发送缓冲区的大小，可以单独设置对应连接的$maxSendBufferSize属性
+     * @var int
+     */
+    public static $defaultMaxSendBufferSize = 1048576;
     
     /**
      * 能接受的最大数据包，为了防止恶意攻击，当数据包的大小大于此值时执行断开
@@ -140,7 +158,7 @@ class TcpConnection extends ConnectionInterface
      * @var int
      */
     protected $_currentPackageLength = 0;
-
+    
     /**
      * 当前的连接状态
      * @var int
@@ -185,6 +203,7 @@ class TcpConnection extends ConnectionInterface
         $this->_socket = $socket;
         stream_set_blocking($this->_socket, 0);
         Worker::$globalEvent->add($this->_socket, EventInterface::EV_READ, array($this, 'baseRead'));
+        $this->maxSendBufferSize = self::$defaultMaxSendBufferSize;
     }
     
     /**
@@ -202,7 +221,7 @@ class TcpConnection extends ConnectionInterface
             return null;
         }
         // 如果当前连接是关闭，则返回false
-        elseif($this->_status == self::STATUS_CLOSING || $this->_status == self::STATUS_CLOSED)
+        elseif($this->_status === self::STATUS_CLOSING || $this->_status === self::STATUS_CLOSED)
         {
             return false;
         }
@@ -264,7 +283,7 @@ class TcpConnection extends ConnectionInterface
         else
         {
             // 缓冲区已经标记为满，仍然然有数据发送，则丢弃数据包
-            if(self::$maxSendBufferSize <= strlen($this->_sendBuffer))
+            if($this->maxSendBufferSize <= strlen($this->_sendBuffer))
             {
                 // 为status命令统计发送失败次数
                 self::$statistics['send_fail']++;
@@ -341,7 +360,7 @@ class TcpConnection extends ConnectionInterface
      */
     public function resumeRecv()
     {
-        if($this->_isPaused == true)
+        if($this->_isPaused === true)
         {
             Worker::$globalEvent->add($this->_socket, EventInterface::EV_READ, array($this, 'baseRead'));
             $this->_isPaused = false;
@@ -422,7 +441,7 @@ class TcpConnection extends ConnectionInterface
                    // 数据足够一个包长
                    self::$statistics['total_request']++;
                    // 当前包长刚好等于buffer的长度
-                   if(strlen($this->_recvBuffer) == $this->_currentPackageLength)
+                   if(strlen($this->_recvBuffer) === $this->_currentPackageLength)
                    {
                        $one_request_buffer = $this->_recvBuffer;
                        $this->_recvBuffer = '';
@@ -489,7 +508,7 @@ class TcpConnection extends ConnectionInterface
                 }
             }
             // 如果连接状态为关闭，则销毁连接
-            if($this->_status == self::STATUS_CLOSING)
+            if($this->_status === self::STATUS_CLOSING)
             {
                 $this->destroy();
             }
@@ -526,7 +545,7 @@ class TcpConnection extends ConnectionInterface
      */
     public function close($data = null)
     {
-        if($this->_status == self::STATUS_CLOSING || $this->_status == self::STATUS_CLOSED)
+        if($this->_status === self::STATUS_CLOSING || $this->_status === self::STATUS_CLOSED)
         {
             return false;
         }
@@ -559,7 +578,7 @@ class TcpConnection extends ConnectionInterface
      */
     protected function checkBufferIsFull()
     {
-        if(self::$maxSendBufferSize <= strlen($this->_sendBuffer))
+        if($this->maxSendBufferSize <= strlen($this->_sendBuffer))
         {
             if($this->onBufferFull)
             {
@@ -581,7 +600,7 @@ class TcpConnection extends ConnectionInterface
     public function destroy()
     {
         // 避免重复调用
-        if($this->_status == self::STATUS_CLOSED)
+        if($this->_status === self::STATUS_CLOSED)
         {
             return false;
         }

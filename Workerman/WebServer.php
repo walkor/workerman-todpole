@@ -1,4 +1,16 @@
 <?php
+/**
+ * This file is part of workerman.
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the MIT-LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @author walkor<walkor@workerman.net>
+ * @copyright walkor<walkor@workerman.net>
+ * @link http://www.workerman.net/
+ * @license http://www.opensource.org/licenses/mit-license.php MIT License
+ */
 namespace Workerman;
 
 use \Workerman\Worker;
@@ -10,8 +22,6 @@ use \Workerman\Protocols\HttpCache;
  *  基于Worker实现的一个简单的WebServer
  *  支持静态文件、支持文件上传、支持POST
  *  HTTP协议
- *  
- * @author walkor <walkor@workerman.net>
  */
 class WebServer extends Worker
 {
@@ -154,9 +164,9 @@ class WebServer extends Worker
         
         $path_info = pathinfo($path);
         $extension = isset($path_info['extension']) ? $path_info['extension'] : '' ;
-        if($extension == '')
+        if($extension === '')
         {
-            $path = ($len = strlen($path)) && $path[$len -1] == '/' ? $path.'index.php' : $path . '/index.php';
+            $path = ($len = strlen($path)) && $path[$len -1] === '/' ? $path.'index.php' : $path . '/index.php';
             $extension = 'php';
         }
         
@@ -165,9 +175,14 @@ class WebServer extends Worker
         $file = "$root_dir/$path";
         
         // 对应的php文件不存在则直接使用根目录的index.php
-        if($extension == 'php' && !is_file($file))
+        if($extension === 'php' && !is_file($file))
         {
             $file = "$root_dir/index.php";
+            if(!is_file($file))
+            {
+                $file = "$root_dir/index.html";
+                $extension = 'html';
+            }
         }
         
         // 请求的文件存在
@@ -183,7 +198,7 @@ class WebServer extends Worker
             $file = realpath($file);
             
             // 如果请求的是php文件
-            if($extension == 'php')
+            if($extension === 'php')
             {
                 $cwd = getcwd();
                 chdir($root_dir);
