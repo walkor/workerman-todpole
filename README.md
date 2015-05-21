@@ -14,7 +14,7 @@ workerman-todpole
 
 2、进入目录运行 php start.php start -d
 
-3、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：
+3、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
 
 ![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/Applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
 
