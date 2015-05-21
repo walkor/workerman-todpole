@@ -29,6 +29,8 @@ workerman-todpole
 4、双击start_for_win.bat启动（系统已经装好php，并设置好环境变量，要求版本php>=5.3.3）  
 5、浏览器访问地址  http://127.0.0.1:8383   
 
+注意：windows系统下无法使用 stop reload status 等命令
+
 虚拟空间（静态空间、php、jsp、asp等）安装部署
 ==================
 虚拟空间安装请使用这个包 [网页空间版本](https://github.com/walkor/workerman-todpole-web)
