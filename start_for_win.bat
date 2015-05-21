@@ -1,0 +1,1 @@
+php Applications\Todpole\start_web.php Applications\Todpole\start_gateway.php Applications\Todpole\start_businessworker.php
