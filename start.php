@@ -7,6 +7,11 @@
 ini_set('display_errors', 'on');
 use Workerman\Worker;
 
+if(strpos(strtolower(PHP_OS), 'win') === 0)
+{
+    exit("start.php not support windows, please use start_for_win.bat\n");
+}
+
 // 检查扩展
 if(!extension_loaded('pcntl'))
 {
