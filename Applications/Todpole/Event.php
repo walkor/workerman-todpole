@@ -21,6 +21,15 @@ use \GatewayWorker\Lib\Gateway;
 
 class Event
 {
+    /**
+     * 当客户端连上时触发
+     * @param int $client_id
+     */
+    public static function onConnect($client_id)
+    {
+        Gateway::sendToCurrentClient('{"type":"welcome","id":'.$client_id.'}');
+    }
+    
    /**
     * 有消息时
     * @param int $client_id
@@ -38,7 +47,6 @@ class Event
         switch($message_data['type'])
         {
             case 'login':
-                Gateway::sendToCurrentClient('{"type":"welcome","id":'.$client_id.'}');
                 break;
             // 更新用户
             case 'update':

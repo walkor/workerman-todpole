@@ -79,12 +79,6 @@ var App = function(aSettings, aCanvas) {
 	
 	
 	app.onSocketOpen = function(e) {
-		var sendObj = {
-				type: 'login'
-			};
-			
-		webSocket.send(JSON.stringify(sendObj));
-			
 		//console.log('Socket opened!', e);
 		
 		//FIXIT: Proof of concept. refactor!
