@@ -23,9 +23,9 @@ workerman-todpole
 首先windows系统需要先下载windows版本workerman，替换Workerman目录。
 
 步骤：  
-1、删除Workerman目录包括文件  
-2、下载或者clone windows版本workerman，zip地址 https://github.com/walkor/workerman-for-win/archive/master.zip  
-3、解压到原Worekrman目录所在位置，同时目录workerman-for-win-master重命名为Workerman(注意第一个字母W为大写)  
+1、下载代码到本地,从源码中找到Workerman目录并删除  
+2、下载windows版本workerman，zip地址 https://github.com/walkor/workerman-for-win/archive/master.zip  
+3、解压到原Worekrman目录所在位置，同时将目录workerman-for-win-master重命名为Workerman(注意第一个字母W为大写)  
 4、双击start_for_win.bat启动（系统已经装好php，并设置好环境变量，要求版本php>=5.3.3）  
 5、浏览器访问地址  http://127.0.0.1:8383   
 
