@@ -17,8 +17,8 @@ use Workerman\Connection\TcpConnection;
 
 use \Workerman\Worker;
 use \Workerman\Connection\AsyncTcpConnection;
-use \Workerman\Protocols\GatewayProtocol;
 use \Workerman\Lib\Timer;
+use \GatewayWorker\Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Lock;
 use \GatewayWorker\Lib\Store;
 use \GatewayWorker\Lib\Context;
@@ -92,6 +92,10 @@ class BusinessWorker extends Worker
      */
     protected function onWorkerStart()
     {
+        if(!class_exists('\Protocols\GatewayProtocol'))
+        {
+            class_alias('\GatewayWorker\Protocols\GatewayProtocol', 'Protocols\GatewayProtocol');
+        }
         Timer::add(1, array($this, 'checkGatewayConnections'));
         $this->checkGatewayConnections();
         \GatewayWorker\Lib\Gateway::setBusinessWorker($this);
@@ -229,7 +233,10 @@ class BusinessWorker extends Worker
      */
     public function onError($connection, $error_no, $error_msg)
     {
-         $this->tryToDeleteGatewayAddress($connection->remoteAddress, $error_msg);
+         if($error_no === WORKERMAN_CONNECT_FAIL)
+         {
+             $this->tryToDeleteGatewayAddress($connection->remoteAddress, $error_msg);
+         }
     }
     
     /**

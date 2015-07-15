@@ -20,7 +20,6 @@ use \Workerman\Connection\ConnectionInterface;
 use \Workerman\Connection\TcpConnection;
 use \Workerman\Connection\UdpConnection;
 use \Workerman\Lib\Timer;
-use \Workerman\Autoloader;
 use \Exception;
 
 /**
@@ -33,7 +32,7 @@ class Worker
      * 版本号
      * @var string
      */
-    const VERSION = '3.1.7';
+    const VERSION = '3.1.8';
     
     /**
      * 状态 启动中
@@ -204,7 +203,7 @@ class Worker
      * 日志目录，默认在workerman根目录下，与Applications同级
      * 可以手动设置
      * 例如 Worker::$logFile = '/tmp/workerman.log';
-     * @var unknown_type
+     * @var mixed
      */
     public static $logFile = '';
     
@@ -222,7 +221,7 @@ class Worker
     
     /**
      * 监听的socket
-     * @var stream
+     * @var resource
      */
     protected $_mainSocket = null;
     
@@ -235,7 +234,7 @@ class Worker
     
     /**
      * socket的上下文，具体选项设置可以在初始化worker时传递
-     * @var context
+     * @var array
      */
     protected $_context = null;
     
@@ -371,6 +370,7 @@ class Worker
      */
     protected static function initWorkers()
     {
+        /** @var static $worker */
         foreach(self::$_workers as $worker)
         {
             // 没有设置worker名称，则使用none代替
@@ -425,6 +425,7 @@ class Worker
         echo 'Workerman version:' , Worker::VERSION , "          PHP version:",PHP_VERSION,"\n";
         echo "------------------------\033[47;30m WORKERS \033[0m-------------------------------\n";
         echo "\033[47;30muser\033[0m",str_pad('', self::$_maxUserNameLength+2-strlen('user')), "\033[47;30mworker\033[0m",str_pad('', self::$_maxWorkerNameLength+2-strlen('worker')), "\033[47;30mlisten\033[0m",str_pad('', self::$_maxSocketNameLength+2-strlen('listen')), "\033[47;30mprocesses\033[0m \033[47;30m","status\033[0m\n";
+        /** @var static $worker */
         foreach(self::$_workers as $worker)
         {
             echo str_pad($worker->user, self::$_maxUserNameLength+2),str_pad($worker->name, self::$_maxWorkerNameLength+2),str_pad($worker->getSocketName(), self::$_maxSocketNameLength+2), str_pad(' '.$worker->count, 9), " \033[32;40m [OK] \033[0m\n";;
@@ -709,7 +710,7 @@ class Worker
      */
     protected static function getAllWorkerPids()
     {
-        $pid_array = array(); 
+        $pid_array = array();
         foreach(self::$_pidMap as $worker_pid_array)
         {
             foreach($worker_pid_array as $worker_pid)
@@ -726,6 +727,7 @@ class Worker
      */
     protected static function forkWorkers()
     {
+        /** @var static $worker */
         foreach(self::$_workers as $worker)
         {
             // 启动过程中需要得到运行用户名的最大长度，在status时格式化展示
@@ -745,7 +747,7 @@ class Worker
             // 创建子进程
             while(count(self::$_pidMap[$worker->workerId]) < $worker->count)
             {
-                self::forkOneWorker($worker);
+                static::forkOneWorker($worker);
             }
         }
     }
@@ -784,10 +786,11 @@ class Worker
             throw new Exception("forkOneWorker fail");
         }
     }
-    
+
     /**
      * 尝试设置运行当前进程的用户
-     * @return void
+     *
+     * @param $user_name
      */
     protected static function setProcessUser($user_name)
     {
@@ -840,6 +843,8 @@ class Worker
             // 挂起进程，直到有子进程退出或者被信号打断
             $status = 0;
             $pid = pcntl_wait($status, WUNTRACED);
+            // 如果有信号到来，尝试触发信号处理函数
+            pcntl_signal_dispatch();
             // 有子进程退出
             if($pid > 0)
             {
@@ -994,6 +999,7 @@ class Worker
         else
         {
             // 执行stop逻辑
+            /** @var static $worker */
             foreach(self::$_workers as $worker)
             {
                 $worker->stop();
@@ -1131,11 +1137,12 @@ class Worker
         }
         file_put_contents(self::$logFile, date('Y-m-d H:i:s') . " " . $msg, FILE_APPEND | LOCK_EX);
     }
-    
+
     /**
      * worker构造函数
+     *
      * @param string $socket_name
-     * @return void
+     * @param array  $context_option
      */
     public function __construct($socket_name = '', $context_option = array())
     {
@@ -1308,7 +1315,7 @@ class Worker
 
     /**
      * 接收一个客户端连接
-     * @param resources $socket
+     * @param resource $socket
      * @return void
      */
     public function acceptConnection($socket)
@@ -1323,6 +1330,7 @@ class Worker
         
         // 初始化连接对象
         $connection = new TcpConnection($new_socket);
+        $this->connections[$connection->id] = $connection;
         $connection->worker = $this;
         $connection->protocol = $this->_protocol;
         $connection->onMessage = $this->onMessage;
@@ -1330,7 +1338,6 @@ class Worker
         $connection->onError = $this->onError;
         $connection->onBufferDrain = $this->onBufferDrain;
         $connection->onBufferFull = $this->onBufferFull;
-        $this->connections[(int)$new_socket] = $connection;
         
         // 如果有设置连接回调，则执行
         if($this->onConnect)
@@ -1346,10 +1353,12 @@ class Worker
             }
         }
     }
-    
+
     /**
      * 处理udp连接（udp其实是无连接的，这里为保证和tcp连接接口一致）
+     *
      * @param resource $socket
+     * @return bool
      */
     public function acceptUdpConnection($socket)
     {
@@ -1364,6 +1373,7 @@ class Worker
         {
             if($this->_protocol)
             {
+                /** @var \Workerman\Protocols\ProtocolInterface $parser */
                 $parser = $this->_protocol;
                 $recv_buffer = $parser::decode($recv_buffer, $connection);
             }

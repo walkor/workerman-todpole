@@ -17,10 +17,10 @@ use Workerman\Connection\TcpConnection;
 
 use \Workerman\Worker;
 use \Workerman\Lib\Timer;
-use \Workerman\Protocols\GatewayProtocol;
+use \Workerman\Autoloader;
+use \GatewayWorker\Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Lock;
 use \GatewayWorker\Lib\Store;
-use \Workerman\Autoloader;
 
 /**
  * 
@@ -349,10 +349,16 @@ class Gateway extends Worker
     
         if(!$global_client_id)
         {
-            $msg .= "createGlobalClientId fail :";
-            if(get_class($store) == 'Memcached')
+            $class = get_class($store);
+            $msg = "createGlobalClientId fail $class :";
+            if($class === 'Memcached')
             {
                 $msg .= $store->getResultMessage();
+            }
+            elseif($class === 'GatewayWorker\Lib\StoreDriver\Redis') 
+            {
+                $msg .= $store->getLastError();
+                $store->clearLastError();
             }
             $this->log($msg);
         }
@@ -376,9 +382,14 @@ class Gateway extends Worker
         // 如果有设置心跳，则定时执行
         if($this->pingInterval > 0)
         {
-            Timer::add($this->pingInterval, array($this, 'ping'));
+            $timer_interval = $this->pingNotResponseLimit > 0 ? $this->pingInterval/2 : $this->pingInterval;
+            Timer::add($timer_interval, array($this, 'ping'));
         }
     
+        if(!class_exists('\Protocols\GatewayProtocol'))
+        {
+            class_alias('\GatewayWorker\Protocols\GatewayProtocol', 'Protocols\GatewayProtocol');
+        }
         // 初始化gateway内部的监听，用于监听worker的连接已经连接上发来的数据
         $this->_innerTcpWorker = new Worker("GatewayProtocol://{$this->lanIp}:{$this->lanPort}");
         $this->_innerTcpWorker->listen();
@@ -596,18 +607,20 @@ class Gateway extends Worker
         foreach($this->_clientConnections as $connection)
         {
             // 上次发送的心跳还没有回复次数大于限定值就断开
-            if($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount >= $this->pingNotResponseLimit)
+            if($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount >= $this->pingNotResponseLimit*2)
             {
                 $connection->destroy();
                 continue;
             }
             // $connection->pingNotResponseCount为-1说明最近客户端有发来消息，则不给客户端发送心跳
-            if($connection->pingNotResponseCount++ >= 0)
+            $connection->pingNotResponseCount++;
+            if($this->pingData)
             {
-                if($this->pingData)
+                if($connection->pingNotResponseCount === 0 || ($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount%2 === 0))
                 {
-                    $connection->send($this->pingData);
+                    continue;
                 }
+                $connection->send($this->pingData);
             }
         }
     }

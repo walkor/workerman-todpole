@@ -16,7 +16,7 @@ namespace GatewayWorker\Lib;
 /**
  * 数据发送相关
  */
-use \Workerman\Protocols\GatewayProtocol;
+use \Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Store;
 use \GatewayWorker\Lib\Context;
 

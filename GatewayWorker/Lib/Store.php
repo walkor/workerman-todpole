@@ -74,6 +74,7 @@ class Store
             }
             if(!isset(self::$instance[$config_name]))
             {
+                ini_set('default_socket_timeout',-1);
                 self::$instance[$config_name] = new \GatewayWorker\Lib\StoreDriver\Redis();
                 // 只选择第一个ip作为服务端
                 $address = current(\Config\Store::$$config_name);

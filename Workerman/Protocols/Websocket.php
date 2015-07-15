@@ -293,13 +293,13 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
             
             // 解析Sec-WebSocket-Key
             $Sec_WebSocket_Key = '';
-            if(preg_match("/Sec-WebSocket-Key: *(.*?)\r\n/", $buffer, $match))
+            if(preg_match("/Sec-WebSocket-Key: *(.*?)\r\n/i", $buffer, $match))
             {
                 $Sec_WebSocket_Key = $match[1];
             }
             else
             {
-                $connection->send("HTTP/1.1 400 Bad Request\r\n\r\n<b>400 Bad Request</b><br>Sec-WebSocket-Key not found", true);
+                $connection->send("HTTP/1.1 400 Bad Request\r\n\r\n<b>400 Bad Request</b><br>Sec-WebSocket-Key not found.<br>This is a WebSocket service and can not be accessed via HTTP.", true);
                 $connection->close();
                 return 0;
             }

@@ -11,7 +11,7 @@
  * @link http://www.workerman.net/
  * @license http://www.opensource.org/licenses/mit-license.php MIT License
  */
-namespace Workerman\Protocols;
+namespace GatewayWorker\Protocols;
 
 /**
  * Gateway与Worker间通讯的二进制协议
