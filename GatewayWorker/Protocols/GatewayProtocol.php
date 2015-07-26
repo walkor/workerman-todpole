@@ -61,6 +61,12 @@ class GatewayProtocol
     // 判断是否在线
     const CMD_IS_ONLINE = 11;
     
+    // client_id绑定到uid
+    const CMD_BIND_UID = 12;
+    
+    // 向uid发送数据
+    const CMD_SEND_TO_UID = 13;
+    
     // 包体是标量
     const FLAG_BODY_IS_SCALAR = 0x01;
     
