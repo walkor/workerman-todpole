@@ -76,12 +76,26 @@ class Store
             {
                 ini_set('default_socket_timeout',-1);
                 self::$instance[$config_name] = new \GatewayWorker\Lib\StoreDriver\Redis();
+                $config = \Config\Store::$$config_name;
                 // 只选择第一个ip作为服务端
-                $address = current(\Config\Store::$$config_name);
+                $address = current($config);
                 list($ip, $port) = explode(':', $address);
                 $timeout = 1;
                 self::$instance[$config_name]->connect($ip, $port, $timeout);
                 self::$instance[$config_name]->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
+            }else{
+                try{
+                    self::$instance[$config_name]->ping();
+                }catch (\RedisException $e){
+                    self::$instance[$config_name] = new \GatewayWorker\Lib\StoreDriver\Redis();
+                    $config = \Config\Store::$$config_name;
+                    // 只选择第一个ip作为服务端
+                    $address = current($config);
+                    list($ip, $port) = explode(':', $address);
+                    $timeout = 1;
+                    self::$instance[$config_name]->connect($ip, $port, $timeout);
+                    self::$instance[$config_name]->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
+                }
             }
             return self::$instance[$config_name];
         }

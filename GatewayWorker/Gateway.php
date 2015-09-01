@@ -540,13 +540,16 @@ class Gateway extends Worker
                 break;
                 // 发送数据给uid
             case GatewayProtocol::CMD_SEND_TO_UID:
-                $uid = $data['ext_data'];
-                if(!empty($this->_uidConnections[$uid]))
+                $uid_array =json_decode($data['ext_data'],true);
+                foreach($uid_array as $uid)
                 {
-                    foreach($this->_uidConnections[$uid] as $connection)
-                    {
-                        $connection->send($data['body']);
-                    }
+                	if(!empty($this->_uidConnections[$uid]))
+                	{
+                		foreach($this->_uidConnections[$uid] as $connection)
+                		{
+                			$connection->send($data['body']);
+                		}
+                	}
                 }
                 break;
             default :

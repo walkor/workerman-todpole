@@ -188,7 +188,7 @@ class Gateway
    
    /**
     * 向所有uid发送
-    * @param unknown_type $uid
+    * @param int/string/array $uid
     * @param unknown_type $message
     */
    public static function sendToUid($uid, $message)
@@ -196,7 +196,14 @@ class Gateway
        $gateway_data = GatewayProtocol::$empty;
        $gateway_data['cmd'] = GatewayProtocol::CMD_SEND_TO_UID;
        $gateway_data['body'] = $message;
-       $gateway_data['ext_data'] = $uid;
+       
+       if(!is_array($uid))
+       {
+			$uid = array($uid);
+       }
+        
+       $gateway_data['ext_data'] = json_encode($uid);
+        
        return self::sendToAllGateway($gateway_data);
    }
    
