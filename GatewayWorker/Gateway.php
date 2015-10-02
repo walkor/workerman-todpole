@@ -37,7 +37,7 @@ class Gateway extends Worker
      * 版本
      * @var string
      */
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
     
     /**
      * 本机ip
@@ -303,11 +303,11 @@ class Gateway extends Worker
      */
     public static function routerBind($worker_connections, $client_connection, $cmd, $buffer)
     {
-            if(!isset($client_connection->businessworker))
+            if(!isset($client_connection->businessworker_address) || !isset($worker_connections[$client_connection->businessworker_address]))
             {
-                $client_connection->businessworker = $worker_connections[array_rand($worker_connections)];
+                $client_connection->businessworker_address = array_rand($worker_connections);
             }
-            return $client_connection->businessworker;
+            return $worker_connections[$client_connection->businessworker_address];
     }
     
     /**
