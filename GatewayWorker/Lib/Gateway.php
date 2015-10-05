@@ -179,11 +179,7 @@ class Gateway
     */
    public static function bindUid($client_id, $uid)
    {
-       $gateway_data = GatewayProtocol::$empty;
-       $gateway_data['cmd'] = GatewayProtocol::CMD_BIND_UID;
-       $gateway_data['client_id'] = $client_id;
-       $gateway_data['ext_data'] = $uid;
-       return self::sendToGateway(Context::$local_ip . ':' . Context::$local_port, $gateway_data);
+       return self::sendCmdAndMessageToClient($client_id, GatewayProtocol::CMD_BIND_UID, '', $uid);
    }
    
    /**
@@ -214,11 +210,17 @@ class Gateway
     */
    public static function updateSocketSession($client_id, $session_str)
    {
-       $gateway_data = GatewayProtocol::$empty;
-       $gateway_data['cmd'] = GatewayProtocol::CMD_UPDATE_SESSION;
-       $gateway_data['client_id'] = $client_id;
-       $gateway_data['ext_data'] = $session_str;
-       return self::sendToGateway(Context::$local_ip . ':' . Context::$local_port, $gateway_data);
+       return self::sendCmdAndMessageToClient($client_id, GatewayProtocol::CMD_UPDATE_SESSION, '', $session_str);
+   }
+   
+   /**
+    * 更新session
+    * @param int $client_id
+    * @param array $session
+    */
+   public static function updateSession($client_id, array $session)
+   {
+       self::updateSocketSession($client_id, Context::sessionEncode($session));
    }
    
    /**
@@ -228,7 +230,7 @@ class Gateway
     * @param string $message
     * @return boolean
     */
-   protected static function sendCmdAndMessageToClient($client_id, $cmd , $message)
+   protected static function sendCmdAndMessageToClient($client_id, $cmd , $message, $ext_data = '')
    {
        // 如果是发给当前用户则直接获取上下文中的地址
        if($client_id === Context::$client_id || $client_id === null)
@@ -247,6 +249,10 @@ class Gateway
        $gateway_data['cmd'] = $cmd;
        $gateway_data['client_id'] = $client_id ? $client_id : Context::$client_id;
        $gateway_data['body'] = $message;
+       if(!empty($ext_data))
+       {
+           $gateway_data['ext_data'] = $ext_data;
+       }
        
        return self::sendToGateway($address, $gateway_data);
    }
