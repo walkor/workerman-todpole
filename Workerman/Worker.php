@@ -13,6 +13,8 @@
  */
 namespace Workerman;
 
+require_once __DIR__.'/Lib/Constants.php';
+
 use \Workerman\Events\Libevent;
 use \Workerman\Events\Select;
 use \Workerman\Events\EventInterface;
@@ -32,7 +34,7 @@ class Worker
      * 版本号
      * @var string
      */
-    const VERSION = '3.1.8';
+    const VERSION = '3.2.1';
     
     /**
      * 状态 启动中
@@ -76,6 +78,12 @@ class Worker
      * @var int
      */
     const MAX_UDP_PACKEG_SIZE = 65535;
+    
+    /**
+     * worker id
+     * @var int
+     */
+    public $id = 0;
     
     /**
      * worker的名称，用于在运行status命令时标记进程
@@ -259,6 +267,13 @@ class Worker
     protected static $_pidsToRestart = array();
     
     /**
+     * 所有进程pid到id的映射
+     * 格式为[worker_id=>[0=>$pid, 1=>$pid, ..], ..]
+     * @var array
+     */
+    protected static $_idMap = array();
+    
+    /**
      * 当前worker状态
      * @var int
      */
@@ -337,7 +352,7 @@ class Worker
      * 初始化一些环境变量
      * @return void
      */
-    public static function init()
+    protected static function init()
     {
         // 如果没设置$pidFile，则生成默认值
         if(empty(self::$pidFile))
@@ -359,7 +374,8 @@ class Worker
         self::$_statisticsFile = sys_get_temp_dir().'/workerman.status';
         // 尝试设置进程名称（需要php>=5.5或者安装了proctitle扩展）
         self::setProcessTitle('WorkerMan: master process  start_file=' . self::$_startFile);
-        
+        // 初始化id
+        self::initId();
         // 初始化定时器
         Timer::init();
     }
@@ -406,6 +422,18 @@ class Worker
     }
     
     /**
+     * 初始化idMap
+     * return void
+     */
+    protected static function initId()
+    {
+        foreach(self::$_workers as $worker_id=>$worker)
+        {
+            self::$_idMap[$worker_id] = array_fill(0, $worker->count, 0);
+        }
+    }
+    
+    /**
      * 获得运行当前进程的用户名
      * @return string
      */
@@ -448,7 +476,7 @@ class Worker
      * php yourfile.php start | stop | restart | reload | status
      * @return void
      */
-    public static function parseCommand()
+    protected static function parseCommand()
     {
         // 检查运行命令的参数
         global $argv;
@@ -486,7 +514,8 @@ class Worker
         {
             if($command === 'start')
             {
-                self::log("Workerman[$start_file] is running");
+                self::log("Workerman[$start_file] already running");
+                exit;
             }
         }
         elseif($command !== 'start' && $command !== 'restart')
@@ -760,10 +789,13 @@ class Worker
     protected static function forkOneWorker($worker)
     {
         $pid = pcntl_fork();
+        // 获得可用的id
+        $id = self::getId($worker->workerId, 0);
         // 主进程记录子进程pid
         if($pid > 0)
         {
             self::$_pidMap[$worker->workerId][$pid] = $pid;
+            self::$_idMap[$worker->workerId][$id] = $pid;
         }
         // 子进程运行
         elseif(0 === $pid)
@@ -778,6 +810,7 @@ class Worker
             Timer::delAll();
             self::setProcessTitle('WorkerMan: worker process  ' . $worker->name . ' ' . $worker->getSocketName());
             self::setProcessUser($worker->user);
+            $worker->id = $id;
             $worker->run();
             exit(250);
         }
@@ -785,6 +818,21 @@ class Worker
         {
             throw new Exception("forkOneWorker fail");
         }
+    }
+    
+    /**
+     * 获得可用的worker->id，以便传递给子进程
+     * @param int $worker_id
+     * @param int $pid
+     */
+    protected static function getId($worker_id, $pid)
+    {
+        $id = array_search($pid, self::$_idMap[$worker_id]);
+        if($id === false)
+        {
+            echo "getId fail\n";
+        }
+        return $id;
     }
 
     /**
@@ -803,7 +851,7 @@ class Worker
         {
             if(!posix_setgid($user_info['gid']) || !posix_setuid($user_info['uid']))
             {
-                self::log( 'Notice : Can not run woker as '.$user_name." , You shuld be root\n", true);
+                self::log( 'Notice : Can not run woker as '.$user_name." , You should be root\n", true);
             }
         }
     }
@@ -869,6 +917,10 @@ class Worker
                         
                         // 清除子进程信息
                         unset(self::$_pidMap[$worker_id][$pid]);
+                        
+                        // 标记$id为可用id
+                        $id = self::getId($worker_id, $pid);
+                        self::$_idMap[$worker_id][$id] = 0;
                         
                         break;
                     }
@@ -1131,7 +1183,7 @@ class Worker
     protected static function log($msg)
     {
         $msg = $msg."\n";
-        if(self::$_status === self::STATUS_STARTING || !self::$daemonize)
+        if(!self::$daemonize)
         {
             echo $msg;
         }
@@ -1165,6 +1217,9 @@ class Worker
             }
             $this->_context = stream_context_create($context_option);
         }
+        
+        // 设置一个空的onMessage，当onMessage未设置时用来消费socket数据
+        $this->onMessage = function(){};
     }
     
     /**
@@ -1250,6 +1305,9 @@ class Worker
      */
     public function run()
     {
+        //更新 Worker 状态
+        self::$_status = self::STATUS_RUNNING;
+        
         // 注册进程退出回调，用来检查是否有错误
         register_shutdown_function(array("\\Workerman\\Worker", 'checkErrors'));
         
