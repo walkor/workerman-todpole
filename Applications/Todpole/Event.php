@@ -27,7 +27,8 @@ class Event
      */
     public static function onConnect($client_id)
     {
-        Gateway::sendToCurrentClient('{"type":"welcome","id":'.$client_id.'}');
+        $_SESSION['id'] = time();
+        Gateway::sendToCurrentClient('{"type":"welcome","id":'.$_SESSION['id'].'}');
     }
     
    /**
@@ -52,25 +53,25 @@ class Event
             case 'update':
                 // 转播给所有用户
                 Gateway::sendToAll(json_encode(
-                        array(
-                                'type'     => 'update',
-                                'id'         => $client_id,
-                                'angle'   => $message_data["angle"]+0,
-                                'momentum' => $message_data["momentum"]+0,
-                                'x'                   => $message_data["x"]+0,
-                                'y'                   => $message_data["y"]+0,
-                                'life'                => 1,
-                                'name'           => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$client_id,
-                                'authorized'  => false,
-                                )
-                        ));
+                    array(
+                        'type'     => 'update',
+                        'id'       => $_SESSION['id'],
+                        'angle'    => $message_data["angle"]+0,
+                        'momentum' => $message_data["momentum"]+0,
+                        'x'        => $message_data["x"]+0,
+                        'y'        => $message_data["y"]+0,
+                        'life'     => 1,
+                        'name'     => isset($message_data['name']) ? $message_data['name'] : 'Guest.'.$_SESSION['id'],
+                        'authorized'  => false,
+                        )
+                    ));
                 return;
             // 聊天
             case 'message':
                 // 向大家说
                 $new_message = array(
                     'type'=>'message', 
-                    'id'=>$client_id,
+                    'id'  =>$_SESSION['id'],
                     'message'=>$message_data['message'],
                 );
                 return Gateway::sendToAll(json_encode($new_message));
