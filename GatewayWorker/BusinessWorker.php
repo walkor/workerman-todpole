@@ -16,11 +16,9 @@ namespace GatewayWorker;
 use Workerman\Connection\TcpConnection;
 
 use \Workerman\Worker;
-use \Workerman\Connection\AsyncTcpConnection;
 use \Workerman\Lib\Timer;
+use \Workerman\Connection\AsyncTcpConnection;
 use \GatewayWorker\Protocols\GatewayProtocol;
-use \GatewayWorker\Lib\Lock;
-use \GatewayWorker\Lib\Store;
 use \GatewayWorker\Lib\Context;
 use \Event;
 
@@ -34,34 +32,46 @@ use \Event;
 class BusinessWorker extends Worker
 {
     /**
-     * 如果连接gateway通讯端口失败，尝试重试多少次
-     * @var int
-     */
-    const MAX_RETRY_COUNT = 5;
-    
-    /**
      * 保存与gateway的连接connection对象
      * @var array
      */
     public $gatewayConnections = array();
-    
+
     /**
-     * 正在连接的gateway内部通讯地址
-     * @var array
+     * 注册中心地址
+     * @var string
      */
-    protected $_connectingGatewayAddress = array();
-    
-    /**
-     * 连接失败gateway内部通讯地址
-     * @var array
-     */
-    protected $_badGatewayAddress = array();
+    public $registerAddress = "127.0.0.1:1236";
     
     /**
      * 保存用户设置的worker启动回调
      * @var callback
      */
     protected $_onWorkerStart = null;
+
+    /**
+     * 到注册中心的连接
+     * @var asyncTcpConnection
+     */
+    protected $_registerConnection = null;
+
+    /**
+     * 处于连接状态的gateway通讯地址
+     * @var array
+     */
+    protected $_connectingGatewayAddresses = array();
+
+    /**
+     * 所有geteway内部通讯地址 
+     * @var array
+     */
+    protected $_gatewayAddresses = array();
+
+    /**
+     * 等待连接个gateway地址
+     * @var array
+     */
+    protected $_waitingConnectGatewayAddresses = array();
     
     /**
      * 构造函数
@@ -96,12 +106,67 @@ class BusinessWorker extends Worker
         {
             class_alias('\GatewayWorker\Protocols\GatewayProtocol', 'Protocols\GatewayProtocol');
         }
-        Timer::add(1, array($this, 'checkGatewayConnections'));
-        $this->checkGatewayConnections();
+        $this->connectToRegister();
         \GatewayWorker\Lib\Gateway::setBusinessWorker($this);
         if($this->_onWorkerStart)
         {
             call_user_func($this->_onWorkerStart, $this);
+        }
+    }
+
+    /**
+     * 连接服务注册中心
+     * @return void
+     */
+    public function connectToRegister()
+    {
+        $this->_registerConnection = new AsyncTcpConnection("text://{$this->registerAddress}");
+        $this->_registerConnection->send('{"event":"worker_connect"}');
+        $this->_registerConnection->onClose = array($this, 'onRegisterConnectionClose');
+        $this->_registerConnection->onMessage = array($this, 'onRegisterConnectionMessage');
+        $this->_registerConnection->connect();
+    }
+
+    /**
+     * 与注册中心连接关闭时，定时重连
+     * @return void
+     */
+    public function onRegisterConnectionClose()
+    {
+        Timer::add(1, array($this, 'connectToRegister', null, false));
+    } 
+
+    /**
+     * 当注册中心发来消息时
+     * @return void
+     */
+    public function onRegisterConnectionMessage($register_connection, $data)
+    {
+        $data = json_decode($data, true);
+        if(!isset($data['event']))
+        {
+            echo "Received bad data from Register\n";
+            return;
+        }
+        $event = $data['event'];
+        switch($event)
+        {
+            case 'broadcast_addresses':
+               if(!is_array($data['addresses']))
+               {
+                   echo "Received bad data from Register. Addresses empty\n";
+                   return;
+               }
+               $addresses = $data['addresses'];
+               $this->_gatewayAddresses = array();
+               foreach($addresses as $addr)
+               {
+                   $this->_gatewayAddresses[$addr] = $addr;
+               }
+               $this->checkGatewayConnections($addresses);
+               break;
+           default:
+               echo "Receive bad event:$event from Register.\n";
         }
     }
     
@@ -117,14 +182,15 @@ class BusinessWorker extends Worker
         Context::$client_port = $data['client_port'];
         Context::$local_ip = $data['local_ip'];
         Context::$local_port = $data['local_port'];
-        Context::$client_id = $data['client_id'];
+        Context::$connection_id = $data['connection_id'];
+        Context::$client_id = Context::addressToClientId($data['local_ip'], $data['local_port'], $data['connection_id']);
         // $_SERVER变量
         $_SERVER = array(
-                'REMOTE_ADDR' => Context::$client_ip,
-                'REMOTE_PORT' => Context::$client_port,
-                'GATEWAY_ADDR' => Context::$local_ip,
-                'GATEWAY_PORT'  => Context::$local_port,
-                'GATEWAY_CLIENT_ID' => Context::$client_id,
+            'REMOTE_ADDR' => long2ip($data['client_ip']),
+            'REMOTE_PORT' => $data['client_port'],
+            'GATEWAY_ADDR' => long2ip($data['local_ip']),
+            'GATEWAY_PORT'  => $data['gateway_port'],
+            'GATEWAY_CLIENT_ID' => Context::$client_id,
         );
         // 尝试解析session
         if($data['ext_data'] != '')
@@ -175,9 +241,42 @@ class BusinessWorker extends Worker
      * @param TcpConnection $connection
      * @return  void
      */
-    public function onClose($connection)
+    public function onGatewayClose($connection)
     {
-        unset($this->gatewayConnections[$connection->remoteAddress], $this->_connectingGatewayAddress[$connection->remoteAddress]);
+        $addr = $connection->remoteAddress;
+        unset($this->gatewayConnections[$addr], $this->_connectingGatewayAddresses[$addr]);
+        if(isset($this->_gatewayAddresses[$addr]) && !isset($this->_waitingConnectGatewayAddresses[$addr]))
+        {
+            Timer::add(1, array($this, 'tryToConnectGateway'), array($addr), false);
+            $this->_waitingConnectGatewayAddresses[$addr] = $addr;
+        }
+    }
+
+    /**
+     * 尝试连接Gateway内部通讯地址
+     * @return void
+     */  
+    public function tryToConnectGateway($addr)
+    {
+        if(!isset($this->gatewayConnections[$addr]) && !isset($this->_connectingGatewayAddresses[$addr]) && isset($this->_gatewayAddresses[$addr]))
+        {
+            $gateway_connection = new AsyncTcpConnection("GatewayProtocol://$addr");
+            $gateway_connection->remoteAddress = $addr;
+            $gateway_connection->onConnect = array($this, 'onConnectGateway');
+            $gateway_connection->onMessage = array($this, 'onGatewayMessage');
+            $gateway_connection->onClose = array($this, 'onGatewayClose');
+            $gateway_connection->onError = array($this, 'onGatewayError');
+            if(TcpConnection::$defaultMaxSendBufferSize == $gateway_connection->maxSendBufferSize)
+            {
+                $gateway_connection->maxSendBufferSize = 50*1024*1024;
+            }
+            $gateway_data = GatewayProtocol::$empty;
+            $gateway_data['cmd'] = GatewayProtocol::CMD_WORKER_CONNECT;
+            $gateway_connection->send($gateway_data);
+            $gateway_connection->connect();
+            $this->_connectingGatewayAddresses[$addr] = $addr;
+        }
+        unset($this->_waitingConnectGatewayAddresses[$addr]);
     }
 
     /**
@@ -185,30 +284,17 @@ class BusinessWorker extends Worker
      * 如果有未连接的端口，则尝试连接
      * @return void
      */
-    public function checkGatewayConnections()
+    public function checkGatewayConnections($addresses_list)
     {
-        $key = 'GLOBAL_GATEWAY_ADDRESS';
-        $addresses_list = Store::instance('gateway')->get($key);
         if(empty($addresses_list))
         {
             return;
         }
         foreach($addresses_list as $addr)
         {
-            if(!isset($this->gatewayConnections[$addr]) && !isset($this->_connectingGatewayAddress[$addr]) && !isset($this->_badGatewayAddress[$addr]))
+            if(!isset($this->_waitingConnectGatewayAddresses[$addr]))
             {
-                $gateway_connection = new AsyncTcpConnection("GatewayProtocol://$addr");
-                $gateway_connection->remoteAddress = $addr;
-                $gateway_connection->onConnect = array($this, 'onConnectGateway');
-                $gateway_connection->onMessage = array($this, 'onGatewayMessage');
-                $gateway_connection->onClose = array($this, 'onClose');
-                $gateway_connection->onError = array($this, 'onError');
-                if(TcpConnection::$defaultMaxSendBufferSize == $gateway_connection->maxSendBufferSize)
-                {
-                    $gateway_connection->maxSendBufferSize = 10*1024*1024;
-                }
-                $gateway_connection->connect();
-                $this->_connectingGatewayAddress[$addr] = 1;
+                $this->tryToConnectGateway($addr);
             }
         }
     }
@@ -222,7 +308,7 @@ class BusinessWorker extends Worker
     public function onConnectGateway($connection)
     {
         $this->gatewayConnections[$connection->remoteAddress] = $connection;
-        unset($this->_badGatewayAddress[$connection->remoteAddress], $this->_connectingGatewayAddress[$connection->remoteAddress]);
+        unset($this->_connectingGatewayAddresses[$connection->remoteAddress], $this->_waitingConnectGatewayAddresses[$connection->remoteAddress]);
     }
     
     /**
@@ -231,35 +317,17 @@ class BusinessWorker extends Worker
      * @param int $error_no
      * @param string $error_msg
      */
-    public function onError($connection, $error_no, $error_msg)
+    public function onGatewayError($connection, $error_no, $error_msg)
     {
-         if($error_no === WORKERMAN_CONNECT_FAIL)
-         {
-             $this->tryToDeleteGatewayAddress($connection->remoteAddress, $error_msg);
-         }
+        echo "GatewayConnection Error : $error_no ,$error_msg\n";
     }
-    
+
     /**
-     * 从存储中删除删除连不上的gateway通讯端口
-     * @param string $addr
-     * @param string $errstr
+     * 获取所有Gateway内部通讯地址
+     * @return array
      */
-    public function tryToDeleteGatewayAddress($addr, $errstr)
+    public function getAllGatewayAddresses()
     {
-        $key = 'GLOBAL_GATEWAY_ADDRESS';
-        if(!isset($this->_badGatewayAddress[$addr]))
-        {
-            $this->_badGatewayAddress[$addr] = 0;
-        }
-        // 删除连不上的端口
-        if($this->_badGatewayAddress[$addr]++ > self::MAX_RETRY_COUNT)
-        {
-            Lock::get();
-            $addresses_list = Store::instance('gateway')->get($key);
-            unset($addresses_list[$addr]);
-            Store::instance('gateway')->set($key, $addresses_list);
-            Lock::release();
-            $this->log("tcp://$addr ".$errstr." del $addr from store", false);
-        }
+        return $this->_gatewayAddresses;
     }
 }

@@ -39,11 +39,16 @@ class Context
      */
     public static $client_port;
     /**
-     * 用户id
-     * @var int
+     * client_id
+     * @var string
      */
     public static $client_id;
-    
+    /**
+     * 连接connection->id
+     * @var int
+     */
+    public static $connection_id;
+
     /**
      * 编码session
      * @param mixed $session_data
@@ -74,6 +79,29 @@ class Context
      */
     public static function clear()
     {
-        self::$local_ip = self::$local_port  = self::$client_ip = self::$client_port = self::$client_id  = null;
+        self::$local_ip = self::$local_port  = self::$client_ip = self::$client_port = self::$client_id  = self::$connection_id = null;
     }
+ 
+    /**
+     * 通讯地址到client_id的转换
+     * @return string
+     */
+    public static function addressToClientId($local_ip, $local_port, $connection_id)
+    {
+        return bin2hex(pack('NnN', $local_ip, $local_port, $connection_id));
+    }
+
+    /**
+     * client_id到通讯地址的转换
+     * @return array
+     */
+    public static function clientIdToAddress($client_id)
+    {
+        if(strlen($client_id) !== 20)
+        {
+            throw new \Exception("client_id $client_id is invalid");
+        }
+        return unpack('Nlocal_ip/nlocal_port/Nconnection_id' ,pack('H*', $client_id));
+    }
+
 }
