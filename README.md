@@ -8,7 +8,7 @@ workerman-todpole
 在自己的服务器上(云主机、vps、物理主机等)安装部署
 ==================
 
-## Linux 系统
+## Linux 系统安装部署
 
 1、下载或者clone代码到本地 详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole)
 
@@ -19,19 +19,9 @@ workerman-todpole
 ![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/Applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
 
 ## Windows系统
-（windows系统仅作为开发测试环境）   
-首先windows系统需要先下载windows版本workerman，替换Workerman目录。
+Windows系统版本请使用这个包[小蝌蚪Windows版本](https://github.com/walkor/workerman-todpole-for-win)
 
-步骤：  
-1、下载代码到本地,从源码中找到Workerman目录并删除  
-2、下载windows版本workerman，zip地址 https://github.com/walkor/workerman-for-win/archive/master.zip  
-3、解压到原Worekrman目录所在位置，同时将目录workerman-for-win-master重命名为Workerman(注意第一个字母W为大写)  
-4、双击start_for_win.bat启动（系统已经装好php，并设置好环境变量，要求版本php>=5.3.3）  
-5、浏览器访问地址  http://127.0.0.1:8383   
-
-注意：windows系统下无法使用 stop reload status 等命令
-
-虚拟空间（静态空间、php、jsp、asp等）安装部署
+## 虚拟空间（静态空间、php、jsp、asp等）安装部署
 ==================
 虚拟空间安装请使用这个包 [网页空间版本](https://github.com/walkor/workerman-todpole-web)
 
