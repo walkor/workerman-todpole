@@ -3,10 +3,11 @@ workerman-todpole
 
 蝌蚪游泳交互程序 使用PHP（workerman框架）+HTML5开发
 
-[线上DEMO](http://kedou.workerman.net)
+![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/Applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
 
-在自己的服务器上(云主机、vps、物理主机等)安装部署
-==================
+
+[线上DEMO效果点击这里](http://kedou.workerman.net)
+
 
 ## Linux 系统安装部署
 
@@ -16,13 +17,10 @@ workerman-todpole
 
 3、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
 
-![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/Applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
-
 ## Windows系统
 Windows系统版本请使用这个包[小蝌蚪Windows版本](https://github.com/walkor/workerman-todpole-for-win)
 
 ## 虚拟空间（静态空间、php、jsp、asp等）安装部署
-==================
 虚拟空间安装请使用这个包 [网页空间版本](https://github.com/walkor/workerman-todpole-web)
 
 非常感谢Rumpetroll
