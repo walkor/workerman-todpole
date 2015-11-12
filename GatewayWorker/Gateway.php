@@ -659,7 +659,7 @@ class Gateway extends Worker
      * @param string $address
      * @return bool
      */
-    protected function registerAddress()
+    public function registerAddress()
     {
         $address = $this->lanIp.':'.$this->lanPort;
         $this->_registerConnection = new AsyncTcpConnection("text://{$this->registerAddress}");
