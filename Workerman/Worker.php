@@ -493,7 +493,7 @@ class Worker
         $start_file = $argv[0]; 
         if(!isset($argv[1]))
         {
-            exit("Usage: php yourfile.php {start|stop|restart|reload|status}\n");
+            exit("Usage: php yourfile.php {start|stop|restart|reload|status|kill}\n");
         }
         
         // 命令
@@ -536,6 +536,10 @@ class Worker
         // 根据命令做相应处理
         switch($command)
         {
+            case 'kill':
+                exec("ps aux | grep $start_file | grep -v grep | awk '{print $2}' |xargs kill -SIGINT");
+                exec("ps aux | grep $start_file | grep -v grep | awk '{print $2}' |xargs kill -SIGKILL");
+                break;
             // 启动 workerman
             case 'start':
                 if($command2 === '-d')
@@ -604,7 +608,7 @@ class Worker
                 exit;
             // 未知命令
             default :
-                 exit("Usage: php yourfile.php {start|stop|restart|reload|status}\n");
+                 exit("Usage: php yourfile.php {start|stop|restart|reload|status|kill}\n");
         }
     }
     
