@@ -133,7 +133,7 @@ class BusinessWorker extends Worker
      */
     public function onRegisterConnectionClose()
     {
-        Timer::add(1, array($this, 'connectToRegister', null, false));
+        Timer::add(1, array($this, 'connectToRegister'), null, false);
     } 
 
     /**
