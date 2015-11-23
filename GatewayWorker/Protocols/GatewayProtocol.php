@@ -160,8 +160,6 @@ class GatewayProtocol
     public static function decode($buffer)
     {
         $data = unpack("Npack_len/Ccmd/Nlocal_ip/nlocal_port/Nclient_ip/nclient_port/Nconnection_id/Cflag/ngateway_port/Next_len", $buffer);
-        $data['local_ip'] = $data['local_ip'];
-        $data['client_ip'] = $data['client_ip'];
         if($data['ext_len'] > 0)
         {
             $data['ext_data'] = substr($buffer, self::HEAD_LEN, $data['ext_len']);
