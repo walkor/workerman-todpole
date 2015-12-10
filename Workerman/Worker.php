@@ -34,7 +34,7 @@ class Worker
      * 版本号
      * @var string
      */
-    const VERSION = '3.2.3';
+    const VERSION = '3.2.5';
     
     /**
      * 状态 启动中
@@ -165,6 +165,12 @@ class Worker
      * @var callback
      */
     public $onWorkerStop = null;
+    
+    /**
+     * 当收到reload命令时的回调函数
+     * @var callback
+     */
+    public $onWorkerReload = null;
     
     /**
      * 传输层协议
@@ -1014,6 +1020,14 @@ class Worker
                         $reloadable_pid_array[$pid] = $pid;
                     }
                 }
+                else
+                {
+                    foreach($worker_pid_array as $pid)
+                    {
+                        // 给reloadable=false的进程也发送一个reload信号，触发onWorkerReload
+                        posix_kill($pid, SIGUSR1);
+                    }
+                }
             }
             
             // 得到所有可以重启的进程
@@ -1040,6 +1054,11 @@ class Worker
         {
             // 如果当前worker的reloadable属性为真，则执行退出
             $worker = current(self::$_workers);
+            // 如果有设置Reload回调，则执行
+            if($worker->onWorkerReload)
+            {
+                call_user_func($worker->onWorkerReload, $worker);
+            }
             if($worker->reloadable)
             {
                 self::stopAll();
@@ -1404,7 +1423,7 @@ class Worker
     public function acceptConnection($socket)
     {
         // 获得客户端连接
-        $new_socket = @stream_socket_accept($socket, 0);
+        $new_socket = @stream_socket_accept($socket, 0, $remote_address);
         // 惊群现象，忽略
         if(false === $new_socket)
         {
@@ -1412,7 +1431,7 @@ class Worker
         }
         
         // 初始化连接对象
-        $connection = new TcpConnection($new_socket);
+        $connection = new TcpConnection($new_socket, $remote_address);
         $this->connections[$connection->id] = $connection;
         $connection->worker = $this;
         $connection->protocol = $this->_protocol;

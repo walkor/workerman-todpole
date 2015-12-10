@@ -48,6 +48,12 @@ class BusinessWorker extends Worker
      * @var callback
      */
     protected $_onWorkerStart = null;
+    
+    /**
+     * 保存用户设置的workerReload回调
+     * @var callback
+     */
+    protected $_onWorkerReload = null;
 
     /**
      * 到注册中心的连接
@@ -92,7 +98,9 @@ class BusinessWorker extends Worker
     public function run()
     {
         $this->_onWorkerStart = $this->onWorkerStart;
+        $this->_onWorkerReload = $this->onWorkerReload;
         $this->onWorkerStart = array($this, 'onWorkerStart');
+        $this->onWorkerReload = array($this, 'onWorkerReload');
         parent::run();
     }
     
@@ -111,6 +119,23 @@ class BusinessWorker extends Worker
         if($this->_onWorkerStart)
         {
             call_user_func($this->_onWorkerStart, $this);
+        }
+    }
+    
+    /**
+     * onWorkerReload回调
+     * @param Worker $worker
+     */
+    protected function onWorkerReload($worker)
+    {
+        // 防止进程立刻退出
+        $worker->reloadable = false;
+        // 延迟0.01秒退出，避免BusinessWorker瞬间全部退出导致没有可用的BusinessWorker进程
+        Timer::add(0.01, array('Workerman\Worker', 'stopAll'));
+        // 执行用户定义的onWorkerReload回调
+        if($this->_onWorkerReload)
+        {
+            call_user_func($this->_onWorkerReload, $this);
         }
     }
 

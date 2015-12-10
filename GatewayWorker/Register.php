@@ -116,7 +116,7 @@ class Register extends Worker
                 $this->broadcastAddresses($connection);
                 break;
            default:
-                echo "unknown event\n";
+                echo "unknown event $event\n";
                 $connection->close();
         }
     }
