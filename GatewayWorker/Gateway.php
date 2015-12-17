@@ -36,7 +36,7 @@ class Gateway extends Worker
      * 版本
      * @var string
      */
-    const VERSION = '2.0.0';
+    const VERSION = '2.0.1';
     
     /**
      * 本机ip
@@ -679,6 +679,7 @@ class Gateway extends Worker
      */
     public function ping()
     {
+        $ping_data = $this->pingData ? (string)$this->pingData : null;
         // 遍历所有客户端连接
         foreach($this->_clientConnections as $connection)
         {
@@ -690,13 +691,13 @@ class Gateway extends Worker
             }
             // $connection->pingNotResponseCount为-1说明最近客户端有发来消息，则不给客户端发送心跳
             $connection->pingNotResponseCount++;
-            if($this->pingData)
+            if($ping_data)
             {
                 if($connection->pingNotResponseCount === 0 || ($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount%2 === 0))
                 {
                     continue;
                 }
-                $connection->send($this->pingData);
+                $connection->send($ping_data);
             }
         }
     }
