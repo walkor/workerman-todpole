@@ -198,13 +198,10 @@ class Select implements EventInterface
                     $this->_scheduler->insert($timer_id, -$next_run_time);
                 }
                 // 尝试执行任务
-                try
+                call_user_func_array($task_data[0], $task_data[1]);
+                if(isset($this->_task[$timer_id]) && $task_data[2] === self::EV_TIMER_ONCE)
                 {
-                    call_user_func_array($task_data[0], $task_data[1]);
-                }
-                catch(\Exception $e)
-                {
-                    echo $e;
+                    $this->del($timer_id, self::EV_TIMER_ONCE);
                 }
                 continue;
             }
