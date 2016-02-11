@@ -373,7 +373,7 @@ class Gateway
    /**
     * 向所有uid发送
     * @param int/string/array $uid
-    * @param unknown_type $message
+    * @param string $message
     */
    public static function sendToUid($uid, $message)
    {
@@ -534,7 +534,7 @@ class Gateway
            }
            return self::$businessWorker->gatewayConnections[$address]->send($gateway_data);
        }
-       // 非workerman环境，使用udp发送数据
+       // 非workerman环境
        $gateway_buffer = GatewayProtocol::encode($gateway_data);
        $client = stream_socket_client("tcp://$address", $errno, $errmsg);
        return strlen($gateway_buffer) == stream_socket_sendto($client, $gateway_buffer);

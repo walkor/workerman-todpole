@@ -92,6 +92,9 @@ class GatewayProtocol
     // worker连接gateway事件
     const CMD_WORKER_CONNECT = 200;
     
+    // 心跳
+    const CMD_PING = 201;
+    
     // 包体是标量
     const FLAG_BODY_IS_SCALAR = 0x01;
     

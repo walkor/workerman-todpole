@@ -20,7 +20,6 @@ use \Workerman\Lib\Timer;
 use \Workerman\Connection\AsyncTcpConnection;
 use \GatewayWorker\Protocols\GatewayProtocol;
 use \GatewayWorker\Lib\Context;
-use \Event;
 
 /**
  * 
@@ -42,6 +41,24 @@ class BusinessWorker extends Worker
      * @var string
      */
     public $registerAddress = "127.0.0.1:1236";
+    
+    /**
+     * 事件处理类,，默认是Event类
+     * @var string
+     */
+    public $eventHandler = 'Event';
+    
+    /**
+     * 业务超时时间，可用来定位程序卡在哪里
+     * @var int
+     */
+    public $processTimeout = 30;
+    
+    /**
+     * 业务超时时间，可用来定位程序卡在哪里
+     * @var int
+     */
+    public $processTimeoutHandler = '\\Workerman\\Worker::log';
     
     /**
      * 保存用户设置的worker启动回调
@@ -78,6 +95,30 @@ class BusinessWorker extends Worker
      * @var array
      */
     protected $_waitingConnectGatewayAddresses = array();
+    
+    /**
+     * Event onConnect回调
+     * @var callback
+     */
+    protected $_eventOnConnect = null;
+    
+    /**
+     * Event onMessage回调
+     * @var callback
+     */
+    protected $_eventOnMessage = null;
+    
+    /**
+     * Event onClose回调
+     * @var callback
+     */
+    protected $_eventOnClose = null;
+    
+    /**
+     * 用于保持长连接的心跳时间间隔
+     * @var int
+     */
+    const PERSISTENCE_CONNECTION_PING_INTERVAL  = 25;
     
     /**
      * 构造函数
@@ -119,6 +160,42 @@ class BusinessWorker extends Worker
         if($this->_onWorkerStart)
         {
             call_user_func($this->_onWorkerStart, $this);
+        }
+        
+        if(function_exists('pcntl_signal'))
+        {
+            // 业务超时信号处理
+            pcntl_signal(SIGALRM, array($this, 'timeoutHandler'), false);
+        }
+        else
+        {
+            $this->processTimeout = 0;
+        }
+        
+        // 设置回调
+        if(is_callable($this->eventHandler.'::onConnect'))
+        {
+            $this->_eventOnConnect = $this->eventHandler.'::onConnect';
+        }
+        
+        if(is_callable($this->eventHandler.'::onMessage'))
+        {
+            $this->_eventOnMessage = $this->eventHandler.'::onMessage';
+        }
+        else
+        {
+            echo "Waring: {$this->eventHandler}::onMessage is not callable\n";
+        }
+        
+        if(is_callable($this->eventHandler.'::onClose'))
+        {
+            $this->_eventOnClose= $this->eventHandler.'::onClose';
+        }
+        
+        // 如果Register服务器不在本地服务器，则需要保持心跳
+        if(strpos($this->registerAddress, '127.0.0.1') !== 0)
+        {
+            Timer::add(self::PERSISTENCE_CONNECTION_PING_INTERVAL, array($this, 'pingRegister'));
         }
     }
     
@@ -202,6 +279,11 @@ class BusinessWorker extends Worker
      */
     public function onGatewayMessage($connection, $data)
     {
+        $cmd = $data['cmd'];
+        if($cmd === GatewayProtocol::CMD_PING)
+        {
+            return;
+        }
         // 上下文数据
         Context::$client_ip = $data['client_ip'];
         Context::$client_port = $data['client_port'];
@@ -228,27 +310,36 @@ class BusinessWorker extends Worker
         }
         // 备份一次$data['ext_data']，请求处理完毕后判断session是否和备份相等，不相等就更新session
         $session_str_copy = $data['ext_data'];
-        $cmd = $data['cmd'];
     
-        // 尝试执行Event::onConnection、Event::onMessage、Event::onClose
-        try{
-            switch($cmd)
-            {
-                case GatewayProtocol::CMD_ON_CONNECTION:
-                    Event::onConnect(Context::$client_id);
-                    break;
-                case GatewayProtocol::CMD_ON_MESSAGE:
-                    Event::onMessage(Context::$client_id, $data['body']);
-                    break;
-                case GatewayProtocol::CMD_ON_CLOSE:
-                    Event::onClose(Context::$client_id);
-                    break;
-            }
-        }
-        catch(\Exception $e)
+        if($this->processTimeout)
         {
-            $msg = 'client_id:'.Context::$client_id."\tclient_ip:".Context::$client_ip."\n".$e->__toString();
-            $this->log($msg);
+            pcntl_alarm($this->processTimeout);
+        }
+        // 尝试执行Event::onConnection、Event::onMessage、Event::onClose
+        switch($cmd)
+        {
+            case GatewayProtocol::CMD_ON_CONNECTION:
+                if($this->_eventOnConnect)
+                {
+                    call_user_func($this->_eventOnConnect, Context::$client_id);
+                }
+                break;
+            case GatewayProtocol::CMD_ON_MESSAGE:
+                if($this->_eventOnMessage)
+                {
+                    call_user_func($this->_eventOnMessage, Context::$client_id, $data['body']);
+                }
+                break;
+            case GatewayProtocol::CMD_ON_CLOSE:
+                if($this->_eventOnClose)
+                {
+                    call_user_func($this->_eventOnClose, Context::$client_id);
+                }
+                break;
+        }
+        if($this->processTimeout)
+        {
+            pcntl_alarm(0);
         }
     
         // 判断session是否被更改
@@ -354,5 +445,41 @@ class BusinessWorker extends Worker
     public function getAllGatewayAddresses()
     {
         return $this->_gatewayAddresses;
+    }
+    
+    /**
+     * 业务超时回调
+     * @param int $signal
+     * @throws Exception
+     */
+    public function timeoutHandler($signal)
+    {
+        switch($signal)
+        {
+            // 超时时钟
+            case SIGALRM:
+                // 超时异常
+                $e = new \Exception("process_timeout", 506);
+                $trace_str = $e->getTraceAsString();
+                // 去掉第一行timeoutHandler的调用栈
+                $trace_str = $e->getMessage().":\n".substr($trace_str, strpos($trace_str, "\n")+1)."\n";
+                // 开发者没有设置超时处理函数，或者超时处理函数返回空则执行退出
+                if(!$this->processTimeoutHandler || !call_user_func($this->processTimeoutHandler, $trace_str, $e))
+                {
+                    Worker::stopAll();
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 向Register发送心跳，用来保持长连接
+     */
+    public function pingRegister()
+    {
+        if($this->_registerConnection)
+        {
+            $this->_registerConnection->send('{"event":"ping"}');
+        }
     }
 }

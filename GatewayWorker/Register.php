@@ -82,7 +82,7 @@ class Register extends Worker
     public function onConnect($connection)
     {
          $connection->timeout_timerid = Timer::add(10, function()use($connection){
-             echo "timeout\n";
+             echo "auth timeout\n";
              $connection->close();
          }, null, false);
     }
@@ -114,6 +114,8 @@ class Register extends Worker
            case 'worker_connect':
                 $this->_workerConnections[$connection->id] = $connection;
                 $this->broadcastAddresses($connection);
+                break;
+           case 'ping':
                 break;
            default:
                 echo "unknown event $event\n";
