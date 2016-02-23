@@ -129,7 +129,7 @@ class BusinessWorker extends Worker
     {
         parent::__construct($socket_name, $context_option);
         $backrace = debug_backtrace();
-        $this->_appInitPath = dirname($backrace[0]['file']);
+        $this->_autoloadRootPath = dirname($backrace[0]['file']);
     }
     
     /**
