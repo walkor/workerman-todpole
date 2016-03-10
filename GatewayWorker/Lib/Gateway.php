@@ -341,7 +341,7 @@ class Gateway
    }
    
    /**
-    * 将client_id与uid绑定
+    * 将client_id与uid解除绑定
     * @param int $client_id
     * @param int/string $uid
     */
