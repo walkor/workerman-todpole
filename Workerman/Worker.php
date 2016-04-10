@@ -616,14 +616,16 @@ class Worker
                 self::log("Workerman[$start_file] already running");
                 exit;
             }
-        } elseif ($command !== 'start' && $command !== 'restart') {
+        } elseif ($command !== 'start' && $command !== 'restart' && $command !== 'kill') {
             self::log("Workerman[$start_file] not run");
+            exit;
         }
 
-        // Execure command.
+        // execute command.
         switch ($command) {
             case 'kill':
                 exec("ps aux | grep $start_file | grep -v grep | awk '{print $2}' |xargs kill -SIGINT");
+                usleep(100000);
                 exec("ps aux | grep $start_file | grep -v grep | awk '{print $2}' |xargs kill -SIGKILL");
                 break;
             case 'start':
@@ -1505,7 +1507,7 @@ class Worker
         // Accept a connection on server socket.
         $new_socket = @stream_socket_accept($socket, 0, $remote_address);
         // Thundering herd.
-        if (false === $new_socket) {
+        if (!$new_socket) {
             return;
         }
 
