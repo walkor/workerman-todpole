@@ -19,7 +19,7 @@
 
 use \GatewayWorker\Lib\Gateway;
 
-class Event
+class Events
 {
     /**
      * 当客户端连上时触发

@@ -49,7 +49,7 @@ class BusinessWorker extends Worker
      *
      * @var string
      */
-    public $eventHandler = 'Event';
+    public $eventHandler = 'Events';
 
     /**
      * 业务超时时间，可用来定位程序卡在哪里
@@ -84,6 +84,13 @@ class BusinessWorker extends Worker
      * @var callback
      */
     protected $_onWorkerReload = null;
+    
+    /**
+     * 保存用户设置的 workerStop 回调
+     *
+     * @var callback
+     */
+    protected $_onWorkerStop= null;
 
     /**
      * 到注册中心的连接
@@ -161,6 +168,7 @@ class BusinessWorker extends Worker
     {
         $this->_onWorkerStart  = $this->onWorkerStart;
         $this->_onWorkerReload = $this->onWorkerReload;
+        $this->_onWorkerStop = $this->onWorkerStop;
         $this->onWorkerStart   = array($this, 'onWorkerStart');
         $this->onWorkerReload  = array($this, 'onWorkerReload');
         parent::run();
@@ -181,6 +189,10 @@ class BusinessWorker extends Worker
         \GatewayWorker\Lib\Gateway::$secretKey = $this->secretKey;
         if ($this->_onWorkerStart) {
             call_user_func($this->_onWorkerStart, $this);
+        }
+        
+        if (is_callable($this->eventHandler . '::onWorkerStart')) {
+            call_user_func($this->eventHandler . '::onWorkerStart', $this);
         }
 
         if (function_exists('pcntl_signal')) {
@@ -227,9 +239,26 @@ class BusinessWorker extends Worker
             call_user_func($this->_onWorkerReload, $this);
         }
     }
+    
+    /**
+     * 当进程关闭时一些清理工作
+     *
+     * @return void
+     */
+    protected function onWorkerStop()
+    {
+        if ($this->_onWorkerStop) {
+            call_user_func($this->_onWorkerStop, $this);
+        }
+        if (is_callable($this->eventHandler . '::onWorkerStop')) {
+            call_user_func($this->eventHandler . '::onWorkerStop', $this);
+        }
+    }
 
     /**
      * 连接服务注册中心
+     * 
+     * @return void
      */
     public function connectToRegister()
     {
