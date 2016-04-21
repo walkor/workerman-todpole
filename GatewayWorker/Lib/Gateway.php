@@ -101,6 +101,17 @@ class Gateway
     }
 
     /**
+     * 判断某个uid是否在线
+     *
+     * @param string $uid
+     * @return int 0|1
+     */
+    public static function isUidOnline($uid)
+    {
+        return (int)self::getClientIdByUid($uid);
+    }
+    
+    /**
      * 判断某个客户端连接是否在线
      *
      * @param int $client_id
