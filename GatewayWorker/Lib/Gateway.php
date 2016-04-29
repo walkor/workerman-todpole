@@ -150,8 +150,7 @@ class Gateway
         $status_data      = array();
         $all_buffer_array = self::getBufferFromAllGateway($gateway_data);
         foreach ($all_buffer_array as $local_ip => $buffer_array) {
-            foreach ($buffer_array as $local_port => $buffer) {
-                $data = json_decode(rtrim($buffer), true);
+            foreach ($buffer_array as $local_port => $data) {
                 if ($data) {
                     foreach ($data as $connection_id => $session_buffer) {
                         $client_id = Context::addressToClientId($local_ip, $local_port, $connection_id);
@@ -202,8 +201,7 @@ class Gateway
         $total_count              = 0;
         $all_buffer_array         = self::getBufferFromAllGateway($gateway_data);
         foreach ($all_buffer_array as $local_ip => $buffer_array) {
-            foreach ($buffer_array as $local_port => $buffer) {
-                $count = intval($buffer);
+            foreach ($buffer_array as $local_port => $count) {
                 if ($count) {
                     $total_count += $count;
                 }
@@ -226,8 +224,7 @@ class Gateway
         $client_list              = array();
         $all_buffer_array         = self::getBufferFromAllGateway($gateway_data);
         foreach ($all_buffer_array as $local_ip => $buffer_array) {
-            foreach ($buffer_array as $local_port => $buffer) {
-                $connection_id_array = json_decode(rtrim($buffer), true);
+            foreach ($buffer_array as $local_port => $connection_id_array) {
                 if ($connection_id_array) {
                     foreach ($connection_id_array as $connection_id) {
                         $client_list[] = Context::addressToClientId($local_ip, $local_port, $connection_id);
@@ -275,7 +272,7 @@ class Gateway
                 return array();
             }
         }
-        $client_array = $status_data = $client_address_map = $receive_buffer_array = array();
+        $client_array = $status_data = $client_address_map = $receive_buffer_array = $recv_length_array = array();
         // 批量向所有gateway进程发送请求数据
         foreach ($all_addresses as $address) {
             $client = stream_socket_client("tcp://$address", $errno, $errmsg);
@@ -299,7 +296,11 @@ class Gateway
                     $buffer    = stream_socket_recvfrom($client, 65535);
                     if ($buffer !== '' && $buffer !== false) {
                         $receive_buffer_array[$socket_id] .= $buffer;
-                        if ($receive_buffer_array[$socket_id][strlen($receive_buffer_array[$socket_id]) - 1] === "\n") {
+                        $receive_length = strlen($receive_buffer_array[$socket_id]);
+                        if (empty($recv_length_array[$socket_id]) && $receive_length >= 4) {
+                            $recv_length_array[$socket_id] = current(unpack('N', $receive_buffer_array[$socket_id]));
+                        }
+                        if (!empty($recv_length_array[$socket_id]) && $receive_length >= $recv_length_array[$socket_id] + 4) {
                             unset($client_array[$socket_id]);
                         }
                     } elseif (feof($client)) {
@@ -315,7 +316,7 @@ class Gateway
         foreach ($receive_buffer_array as $socket_id => $buffer) {
             $local_ip                                    = ip2long($client_address_map[$socket_id][0]);
             $local_port                                  = $client_address_map[$socket_id][1];
-            $format_buffer_array[$local_ip][$local_port] = $buffer;
+            $format_buffer_array[$local_ip][$local_port] = unserialize(substr($buffer, 4));
         }
         return $format_buffer_array;
     }
@@ -449,20 +450,60 @@ class Gateway
      * @param string $session_str
      * @return bool
      */
-    public static function updateSocketSession($client_id, $session_str)
+    public static function setSocketSession($client_id, $session_str)
     {
-        return self::sendCmdAndMessageToClient($client_id, GatewayProtocol::CMD_UPDATE_SESSION, '', $session_str);
+        return self::sendCmdAndMessageToClient($client_id, GatewayProtocol::CMD_SET_SESSION, '', $session_str);
     }
 
     /**
-     * 更新 session
+     * 设置 session，原session值会被覆盖
+     *
+     * @param int   $client_id
+     * @param array $session
+     */
+    public static function setSession($client_id, array $session)
+    {
+        if (Context::$client_id === $client_id) {
+            $_SESSION = $session;
+            Context::$old_session = $_SESSION;
+        }
+        return self::setSocketSession($client_id, Context::sessionEncode($session));
+    }
+    
+    /**
+     * 更新 session，实际上是与老的session合并
      *
      * @param int   $client_id
      * @param array $session
      */
     public static function updateSession($client_id, array $session)
     {
-        self::updateSocketSession($client_id, Context::sessionEncode($session));
+        if (Context::$client_id === $client_id) {
+            $_SESSION = $session + (array)$_SESSION;
+            Context::$old_session = $_SESSION;
+        }
+        return self::sendCmdAndMessageToClient($client_id, GatewayProtocol::CMD_UPDATE_SESSION, '', Context::sessionEncode($session));
+    }
+    
+    /**
+     * 获取某个client_id的session
+     *
+     * @param int   $client_id
+     * @return mixed false表示出错、null表示用户不存在、array表示具体的session信息 
+     */
+    public static function getSession($client_id)
+    {
+        $address_data = Context::clientIdToAddress($client_id);
+        $address      = long2ip($address_data['local_ip']) . ":{$address_data['local_port']}";
+        if (isset(self::$businessWorker)) {
+            if (!isset(self::$businessWorker->gatewayConnections[$address])) {
+                return null;
+            }
+        }
+        $gateway_data                  = GatewayProtocol::$empty;
+        $gateway_data['cmd']           = GatewayProtocol::CMD_GET_SESSION_BY_CLIENT_ID;
+        $gateway_data['connection_id'] = $address_data['connection_id'];
+        return self::sendAndRecv($address, $gateway_data);
     }
 
     /**
@@ -520,6 +561,7 @@ class Gateway
             stream_set_timeout($client, 1);
             $all_buffer = '';
             $time_start = microtime(true);
+            $pack_len = 0;
             while (1) {
                 $buf = stream_socket_recvfrom($client, 655350);
                 if ($buf !== '' && $buf !== false) {
@@ -527,16 +569,22 @@ class Gateway
                 } else {
                     if (feof($client)) {
                         throw new Exception("connection close tcp://$address");
+                    } elseif (microtime(true) - $time_start > $timeout) {
+                        break;
                     }
                     continue;
                 }
+                $recv_len = strlen($all_buffer);
+                if (!$pack_len && $recv_len >= 4) {
+                    $pack_len= current(unpack('N', $all_buffer));
+                }
                 // 回复的数据都是以\n结尾
-                if (($all_buffer && $all_buffer[strlen($all_buffer) - 1] === "\n") || microtime(true) - $time_start > $timeout) {
+                if (($pack_len && $recv_len >= $pack_len + 4) || microtime(true) - $time_start > $timeout) {
                     break;
                 }
             }
             // 返回结果
-            return json_decode(rtrim($all_buffer), true);
+            return unserialize(substr($all_buffer, 4));
         } else {
             throw new Exception("sendAndRecv($address, \$bufer) fail ! Can not send data!", 502);
         }

@@ -340,12 +340,10 @@ class BusinessWorker extends Worker
         );
         // 尝试解析 session
         if ($data['ext_data'] != '') {
-            $_SESSION = Context::sessionDecode($data['ext_data']);
+            Context::$old_session = $_SESSION = Context::sessionDecode($data['ext_data']);
         } else {
-            $_SESSION = null;
+            Context::$old_session = $_SESSION = null;
         }
-        // 备份一次 $data['ext_data']，请求处理完毕后判断session是否和备份相等，不相等就更新 session
-        $session_str_copy = $data['ext_data'];
 
         if ($this->processTimeout) {
             pcntl_alarm($this->processTimeout);
@@ -371,11 +369,16 @@ class BusinessWorker extends Worker
         if ($this->processTimeout) {
             pcntl_alarm(0);
         }
+        
+        // session 必须是数组
+        if ($_SESSION !== null && !is_array($_SESSION)) {
+            throw new \Exception('$_SESSION must be an array. But $_SESSION=' . var_export($_SESSION, true) . ' is not array.');
+        }
 
         // 判断 session 是否被更改
-        $session_str_now = $_SESSION !== null ? Context::sessionEncode($_SESSION) : '';
-        if ($session_str_copy != $session_str_now) {
-            \GatewayWorker\Lib\Gateway::updateSocketSession(Context::$client_id, $session_str_now);
+        if ($_SESSION !== Context::$old_session) {
+            $session_str_now = $_SESSION !== null ? Context::sessionEncode($_SESSION) : '';
+            \GatewayWorker\Lib\Gateway::setSocketSession(Context::$client_id, $session_str_now);
         }
 
         Context::clear();

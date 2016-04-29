@@ -53,7 +53,7 @@ class GatewayProtocol
     // 发给gateway的踢出用户
     const CMD_KICK = 7;
 
-    // 发给gateway，通知用户session更改
+    // 发给gateway，通知用户session更新
     const CMD_UPDATE_SESSION = 9;
 
     // 获取在线状态
@@ -97,6 +97,12 @@ class GatewayProtocol
     
     // GatewayClient连接gateway事件
     const CMD_GATEWAY_CLIENT_CONNECT = 202;
+    
+    // 根据client_id获取session
+    const CMD_GET_SESSION_BY_CLIENT_ID = 203;
+    
+    // 发给gateway，覆盖session
+    const CMD_SET_SESSION = 204;
 
     // 包体是标量
     const FLAG_BODY_IS_SCALAR = 0x01;

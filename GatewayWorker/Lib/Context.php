@@ -61,6 +61,13 @@ class Context
      * @var int
      */
     public static $connection_id;
+    
+    /**
+     * 旧的session
+     * 
+     * @var string
+     */
+    public static $old_session;
 
     /**
      * 编码 session
@@ -95,7 +102,7 @@ class Context
     public static function clear()
     {
         self::$local_ip = self::$local_port = self::$client_ip = self::$client_port =
-        self::$client_id = self::$connection_id = null;
+        self::$client_id = self::$connection_id  = self::$old_session = null;
     }
 
     /**
