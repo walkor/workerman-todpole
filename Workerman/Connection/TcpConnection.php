@@ -211,6 +211,7 @@ class TcpConnection extends ConnectionInterface
         $this->id      = $this->_id = self::$_idRecorder++;
         $this->_socket = $socket;
         stream_set_blocking($this->_socket, 0);
+        stream_set_read_buffer($this->_socket, 0);
         Worker::$globalEvent->add($this->_socket, EventInterface::EV_READ, array($this, 'baseRead'));
         $this->maxSendBufferSize = self::$defaultMaxSendBufferSize;
         $this->_remoteAddress    = $remote_address;
@@ -259,10 +260,10 @@ class TcpConnection extends ConnectionInterface
                         try {
                             call_user_func($this->onError, $this, WORKERMAN_SEND_FAIL, 'client closed');
                         } catch (\Exception $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         } catch (\Error $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         }
                     }
@@ -283,7 +284,10 @@ class TcpConnection extends ConnectionInterface
                     try {
                         call_user_func($this->onError, $this, WORKERMAN_SEND_FAIL, 'send buffer full and drop package');
                     } catch (\Exception $e) {
-                        echo $e;
+                        Worker::log($e);
+                        exit(250);
+                    } catch (\Error $e) {
+                        Worker::log($e);
                         exit(250);
                     }
                 }
@@ -304,7 +308,7 @@ class TcpConnection extends ConnectionInterface
     {
         $pos = strrpos($this->_remoteAddress, ':');
         if ($pos) {
-            return substr($this->_remoteAddress, 0, $pos);
+            return trim(substr($this->_remoteAddress, 0, $pos), '[]');
         }
         return '';
     }
@@ -351,24 +355,21 @@ class TcpConnection extends ConnectionInterface
      * Base read handler.
      *
      * @param resource $socket
+     * @param bool $check_eof
      * @return void
      */
     public function baseRead($socket, $check_eof = true)
     {
-        $read_data = false;
-        while (1) {
-            $buffer = fread($socket, self::READ_BUFFER_SIZE);
-            if ($buffer === '' || $buffer === false) {
-                break;
-            }
-            $read_data = true;
-            $this->_recvBuffer .= $buffer;
-        }
+        $buffer = fread($socket, self::READ_BUFFER_SIZE);
 
         // Check connection closed.
-        if (!$read_data && $check_eof) {
-            $this->destroy();
-            return;
+        if ($buffer === '' || $buffer === false) {
+            if ($check_eof && (feof($socket) || !is_resource($socket) || $buffer === false)) {
+                $this->destroy();
+                return;
+            }
+        } else {
+            $this->_recvBuffer .= $buffer;
         }
 
         // If the application layer protocol has been set up.
@@ -418,13 +419,13 @@ class TcpConnection extends ConnectionInterface
                     continue;
                 }
                 try {
-                    // Decode request buffer before Emiting onMessage callback.
+                    // Decode request buffer before Emitting onMessage callback.
                     call_user_func($this->onMessage, $this, $parser::decode($one_request_buffer, $this));
                 } catch (\Exception $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 } catch (\Error $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 }
             }
@@ -444,10 +445,10 @@ class TcpConnection extends ConnectionInterface
         try {
             call_user_func($this->onMessage, $this, $this->_recvBuffer);
         } catch (\Exception $e) {
-            echo $e;
+            Worker::log($e);
             exit(250);
         } catch (\Error $e) {
-            echo $e;
+            Worker::log($e);
             exit(250);
         }
         // Clean receive buffer.
@@ -470,10 +471,10 @@ class TcpConnection extends ConnectionInterface
                 try {
                     call_user_func($this->onBufferDrain, $this);
                 } catch (\Exception $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 } catch (\Error $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 }
             }
@@ -567,10 +568,10 @@ class TcpConnection extends ConnectionInterface
                 try {
                     call_user_func($this->onBufferFull, $this);
                 } catch (\Exception $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 } catch (\Error $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 }
             }
@@ -603,10 +604,10 @@ class TcpConnection extends ConnectionInterface
             try {
                 call_user_func($this->onClose, $this);
             } catch (\Exception $e) {
-                echo $e;
+                Worker::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                Worker::log($e);
                 exit(250);
             }
         }

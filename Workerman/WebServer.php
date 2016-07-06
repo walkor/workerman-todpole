@@ -108,10 +108,10 @@ class WebServer extends Worker
             try {
                 call_user_func($this->_onWorkerStart, $this);
             } catch (\Exception $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             }
         }
@@ -162,7 +162,7 @@ class WebServer extends Worker
             return;
         }
 
-        $workerman_path = $workerman_url_info['path'];
+        $workerman_path = isset($workerman_url_info['path']) ? $workerman_url_info['path'] : '/';
 
         $workerman_path_info      = pathinfo($workerman_path);
         $workerman_file_extension = isset($workerman_path_info['extension']) ? $workerman_path_info['extension'] : '';

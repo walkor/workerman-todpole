@@ -38,7 +38,7 @@ class Gateway extends Worker
      *
      * @var string
      */
-    const VERSION = '2.0.5';
+    const VERSION = '2.0.7';
 
     /**
      * 本机 IP
@@ -99,6 +99,7 @@ class Gateway extends Worker
     
     /**
      * 秘钥
+     *
      * @var string
      */
     public $secretKey = '';
@@ -109,6 +110,13 @@ class Gateway extends Worker
      * @var callback
      */
     public $router = null;
+
+    /**
+     * 协议加速
+     *
+     * @var bool
+     */
+    public $protocolAccelerate = true;
 
     /**
      * 保存客户端的所有 connection 对象
@@ -285,6 +293,7 @@ class Gateway extends Worker
             'client_port'   => $connection->getRemotePort(),
             'gateway_port'  => $this->_gatewayPort,
             'connection_id' => $connection->id,
+            'flag'          => 0,
         );
         // 连接的 session
         $connection->session = '';
@@ -307,7 +316,8 @@ class Gateway extends Worker
      */
     protected function generateConnectionId()
     {
-        if (self::$_connectionIdRecorder >= 4294967295) {
+        $max_unsigned_int = 4294967295;
+        if (self::$_connectionIdRecorder >= $max_unsigned_int) {
             self::$_connectionIdRecorder = 1;
         }
         $id = self::$_connectionIdRecorder ++;
@@ -500,7 +510,7 @@ class Gateway extends Worker
             case GatewayProtocol::CMD_WORKER_CONNECT:
                 $worker_info = json_decode($data['body'], true);
                 if ($worker_info['secret_key'] !== $this->secretKey) {
-                    echo "Gateway: Worker key does not match $secret_key !== {$this->secretKey}\n";
+                    echo "Gateway: Worker key does not match {$this->secretKey} !== {$this->secretKey}\n";
                     return $connection->close();
                 }
                 $connection->key                            = $connection->getRemoteIp() . ':' . $worker_info['worker_key'];
@@ -511,7 +521,7 @@ class Gateway extends Worker
             case GatewayProtocol::CMD_GATEWAY_CLIENT_CONNECT:
                 $worker_info = json_decode($data['body'], true);
                 if ($worker_info['secret_key'] !== $this->secretKey) {
-                    echo "Gateway: GatewayClient key does not match $secret_key !== {$this->secretKey}\n";
+                    echo "Gateway: GatewayClient key does not match {$this->secretKey} !== {$this->secretKey}\n";
                     return $connection->close();
                 }
                 $connection->authorized = true;
@@ -530,18 +540,27 @@ class Gateway extends Worker
                 return;
             // 广播, Gateway::sendToAll($message, $client_id_array)
             case GatewayProtocol::CMD_SEND_TO_ALL:
+                $raw = (bool)($data['flag'] & GatewayProtocol::FLAG_NOT_CALL_ENCODE);
+                $body = $data['body'];
+                if (!$raw && $this->protocolAccelerate && $this->protocol) {
+                    $body = $this->preEncodeForClient($body);
+                    $raw = true;
+                }
+                $ext_data = $data['ext_data'] ? json_decode($data['ext_data'], true) : '';
                 // $client_id_array 不为空时，只广播给 $client_id_array 指定的客户端
-                if ($data['ext_data']) {
-                    $connection_id_array = unpack('N*', $data['ext_data']);
-                    foreach ($connection_id_array as $connection_id) {
+                if (isset($ext_data['connections'])) {
+                    foreach ($ext_data['connections'] as $connection_id) {
                         if (isset($this->_clientConnections[$connection_id])) {
-                            $this->_clientConnections[$connection_id]->send($data['body']);
+                            $this->_clientConnections[$connection_id]->send($body, $raw);
                         }
                     }
                 } // $client_id_array 为空时，广播给所有在线客户端
                 else {
+                    $exclude_connection_id = !empty($ext_data['exclude']) ? $ext_data['exclude'] : null;
                     foreach ($this->_clientConnections as $client_connection) {
-                        $client_connection->send($data['body']);
+                        if (!isset($exclude_connection_id[$client_connection->id])) {
+                            $client_connection->send($body, $raw);
+                        }
                     }
                 }
                 return;
@@ -680,12 +699,24 @@ class Gateway extends Worker
                 return;
             // 向某个用户组发送消息 Gateway::sendToGroup($group, $msg);
             case GatewayProtocol::CMD_SEND_TO_GROUP:
-                $group_array = json_decode($data['ext_data'], true);
+                $raw = (bool)($data['flag'] & GatewayProtocol::FLAG_NOT_CALL_ENCODE);
+                $body = $data['body'];
+                if (!$raw && $this->protocolAccelerate && $this->protocol) {
+                    $body = $this->preEncodeForClient($body);
+                    $raw = true;
+                }
+                $ext_data = json_decode($data['ext_data'], true);
+                $group_array = $ext_data['group'];
+                $exclude_connection_id = $ext_data['exclude'];
+
                 foreach ($group_array as $group) {
                     if (!empty($this->_groupConnections[$group])) {
                         foreach ($this->_groupConnections[$group] as $connection) {
-                            /** @var TcpConnection $connection */
-                            $connection->send($data['body']);
+                            if(!isset($exclude_connection_id[$connection->id]))
+                            {
+                                /** @var TcpConnection $connection */
+                                $connection->send($body, $raw);
+                            }
                         }
                     }
                 }
@@ -775,6 +806,11 @@ class Gateway extends Worker
     public function ping()
     {
         $ping_data = $this->pingData ? (string)$this->pingData : null;
+        $raw = false;
+        if ($this->protocolAccelerate && $ping_data && $this->protocol) {
+            $ping_data = $this->preEncodeForClient($ping_data);
+            $raw = true;
+        }
         // 遍历所有客户端连接
         foreach ($this->_clientConnections as $connection) {
             // 上次发送的心跳还没有回复次数大于限定值就断开
@@ -788,11 +824,11 @@ class Gateway extends Worker
             $connection->pingNotResponseCount++;
             if ($ping_data) {
                 if ($connection->pingNotResponseCount === 0 ||
-                    ($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount % 2 === 0)
+                    ($this->pingNotResponseLimit > 0 && $connection->pingNotResponseCount % 2 === 1)
                 ) {
                     continue;
                 }
-                $connection->send($ping_data);
+                $connection->send($ping_data, $raw);
             }
         }
     }
@@ -818,6 +854,18 @@ class Gateway extends Worker
     {
         if ($this->_registerConnection) {
             $this->_registerConnection->send('{"event":"ping"}');
+        }
+    }
+
+    /**
+     * @param mixed $data
+     *
+     * @return string
+     */
+    protected function preEncodeForClient($data)
+    {
+        foreach ($this->_clientConnections as $client_connection) {
+            return call_user_func(array($client_connection->protocol, 'encode'), $data, $client_connection);
         }
     }
 

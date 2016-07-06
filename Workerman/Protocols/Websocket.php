@@ -14,6 +14,7 @@
 namespace Workerman\Protocols;
 
 use Workerman\Connection\ConnectionInterface;
+use Workerman\Worker;
 
 /**
  * WebSocket protocol.
@@ -90,10 +91,10 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
                         try {
                             call_user_func($connection->onWebSocketClose, $connection);
                         } catch (\Exception $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         } catch (\Error $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         }
                     } // Close connection.
@@ -108,10 +109,10 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
                         try {
                             call_user_func($connection->onWebSocketPing, $connection);
                         } catch (\Exception $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         } catch (\Error $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         }
                     } // Send pong package to client.
@@ -135,10 +136,10 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
                         try {
                             call_user_func($connection->onWebSocketPong, $connection);
                         } catch (\Exception $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         } catch (\Error $e) {
-                            echo $e;
+                            Worker::log($e);
                             exit(250);
                         }
                     }
@@ -214,6 +215,9 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
      */
     public static function encode($buffer, ConnectionInterface $connection)
     {
+        if (!is_scalar($buffer)) {
+            throw new \Exception("You can't send(" . gettype($buffer) . ") to client, you need to convert it to a string. ");
+        }
         $len = strlen($buffer);
         if (empty($connection->websocketType)) {
             $connection->websocketType = self::BINARY_TYPE_BLOB;
@@ -346,10 +350,10 @@ class Websocket implements \Workerman\Protocols\ProtocolInterface
                 try {
                     call_user_func($connection->onWebSocketConnect, $connection, $buffer);
                 } catch (\Exception $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 } catch (\Error $e) {
-                    echo $e;
+                    Worker::log($e);
                     exit(250);
                 }
                 $_GET = $_COOKIE = $_SERVER = array();

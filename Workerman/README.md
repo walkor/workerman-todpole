@@ -1,4 +1,5 @@
 # Workerman
+[![Gitter](https://badges.gitter.im/walkor/Workerman.svg)](https://gitter.im/walkor/Workerman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=body_badge)
 
 ## What is it
 Workerman is a library for event-driven programming in PHP. It has a huge number of features. Each worker is able to handle thousands of connections.
@@ -53,7 +54,7 @@ $ws_worker->onClose = function($connection)
 Worker::runAll();
 ```
 
-### A http server
+### An http server
 test.php
 ```php
 require_once './Workerman/Autoloader.php';
@@ -82,7 +83,7 @@ Worker::runAll();
 test.php
 ```php
 require_once './Workerman/Autoloader.php';
-use \Workerman\WebServer;
+use Workerman\WebServer;
 
 // WebServer
 $web = new WebServer("http://0.0.0.0:80");
@@ -123,7 +124,7 @@ $tcp_worker->onMessage = function($connection, $data)
 };
 
 // Emitted when new connection come
-$tcp_worker->onClose($connection)
+$tcp_worker->onClose = function($connection)
 {
     echo "Connection closed\n";
 };
@@ -169,7 +170,7 @@ class MyTextProtocol
 test.php
 ```php
 require_once './Workerman/Autoloader.php';
-use Workerman\Worker
+use Workerman\Worker;
 
 // #### MyTextProtocol worker ####
 $text_worker = new Worker("MyTextProtocol://0.0.0.0:5678");
@@ -218,7 +219,7 @@ $task->onWorkerStart = function($task)
 Worker::runAll();
 ```
 
-run width
+run with:
 
 ```php test.php start```
 
@@ -257,7 +258,7 @@ $worker = new Worker('tcp://0.0.0.0:1234');
 $worker->count=3;
 $worker->onMessage = function($connection, $data)
 {
-    $connection->send("HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nServer: workerman\1.1.4\r\n\r\nhello");
+    $connection->send("HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nServer: workerman\r\nContent-Length: 5\r\n\r\nhello");
 };
 Worker::runAll();
 ```

@@ -33,7 +33,7 @@ class Worker
      *
      * @var string
      */
-    const VERSION = '3.3.2';
+    const VERSION = '3.3.3';
 
     /**
      * Status starting.
@@ -399,7 +399,6 @@ class Worker
         'udp'   => 'udp',
         'unix'  => 'unix',
         'ssl'   => 'tcp',
-        'tsl'   => 'tcp',
         'sslv2' => 'tcp',
         'sslv3' => 'tcp',
         'tls'   => 'tcp'
@@ -599,7 +598,7 @@ class Worker
         // Start command.
         $mode = '';
         if ($command === 'start') {
-            if ($command2 === '-d') {
+            if ($command2 === '-d' || Worker::$daemonize) {
                 $mode = 'in DAEMON mode';
             } else {
                 $mode = 'in DEBUG mode';
@@ -717,9 +716,9 @@ class Worker
         pcntl_signal(SIGUSR2, SIG_IGN, false);
         // reinstall stop signal handler
         self::$globalEvent->add(SIGINT, EventInterface::EV_SIGNAL, array('\Workerman\Worker', 'signalHandler'));
-        //  uninstall  reload signal handler
+        // reinstall  reload signal handler
         self::$globalEvent->add(SIGUSR1, EventInterface::EV_SIGNAL, array('\Workerman\Worker', 'signalHandler'));
-        // uninstall  status signal handler
+        // reinstall  status signal handler
         self::$globalEvent->add(SIGUSR2, EventInterface::EV_SIGNAL, array('\Workerman\Worker', 'signalHandler'));
     }
 
@@ -1110,10 +1109,10 @@ class Worker
                 try {
                     call_user_func($worker->onWorkerReload, $worker);
                 } catch (\Exception $e) {
-                    echo $e;
+                    self::log($e);
                     exit(250);
                 } catch (\Error $e) {
-                    echo $e;
+                    self::log($e);
                     exit(250);
                 }
             }
@@ -1291,13 +1290,13 @@ class Worker
      * @param string $msg
      * @return void
      */
-    protected static function log($msg)
+    public static function log($msg)
     {
         $msg = $msg . "\n";
         if (!self::$daemonize) {
             echo $msg;
         }
-        file_put_contents(self::$logFile, date('Y-m-d H:i:s') . " " . $msg, FILE_APPEND | LOCK_EX);
+        file_put_contents(self::$logFile, date('Y-m-d H:i:s') . ' ' . 'pid:'. posix_getpid() . ' ' . $msg, FILE_APPEND | LOCK_EX);
     }
 
     /**
@@ -1460,10 +1459,10 @@ class Worker
             try {
                 call_user_func($this->onWorkerStart, $this);
             } catch (\Exception $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             }
         }
@@ -1484,10 +1483,10 @@ class Worker
             try {
                 call_user_func($this->onWorkerStop, $this);
             } catch (\Exception $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             }
         }
@@ -1527,10 +1526,10 @@ class Worker
             try {
                 call_user_func($this->onConnect, $connection);
             } catch (\Exception $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             }
         }
@@ -1560,10 +1559,10 @@ class Worker
             try {
                 call_user_func($this->onMessage, $connection, $recv_buffer);
             } catch (\Exception $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             } catch (\Error $e) {
-                echo $e;
+                self::log($e);
                 exit(250);
             }
         }

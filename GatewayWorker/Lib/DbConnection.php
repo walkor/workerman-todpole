@@ -1717,7 +1717,7 @@ class DbConnection
     protected function execute($query, $parameters = "")
     {
         try {
-            $this->sQuery = $this->pdo->prepare($query);
+            $this->sQuery = @$this->pdo->prepare($query);
             $this->bindMore($parameters);
             if (!empty($this->parameters)) {
                 foreach ($this->parameters as $param) {
