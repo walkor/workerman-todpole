@@ -48,8 +48,11 @@ class Http
             } else {
                 return 0;
             }
-        } else {
+        } elseif (0 === strpos($recv_buffer, "GET")) {
             return strlen($header) + 4;
+        } else {
+            $connection->send("HTTP/1.1 400 Bad Request\r\n\r\n", true);
+            return 0;
         }
     }
 
@@ -74,7 +77,7 @@ class Http
             'REQUEST_METHOD'       => '',
             'REQUEST_URI'          => '',
             'SERVER_PROTOCOL'      => '',
-            'SERVER_SOFTWARE'      => 'workerman/3.0',
+            'SERVER_SOFTWARE'      => 'workerman/3.3.3',
             'SERVER_NAME'          => '',
             'HTTP_HOST'            => '',
             'HTTP_USER_AGENT'      => '',
@@ -101,13 +104,13 @@ class Http
             if (empty($content)) {
                 continue;
             }
-            list($key, $value) = explode(':', $content, 2);
-            $key   = strtolower($key);
-            $value = trim($value);
+            list($key, $value)       = explode(':', $content, 2);
+            $key                     = str_replace('-', '_', strtoupper($key));
+            $value                   = trim($value);
+            $_SERVER['HTTP_' . $key] = $value;
             switch ($key) {
                 // HTTP_HOST
-                case 'host':
-                    $_SERVER['HTTP_HOST']   = $value;
+                case 'HOST':
                     $tmp                    = explode(':', $value);
                     $_SERVER['SERVER_NAME'] = $tmp[0];
                     if (isset($tmp[1])) {
@@ -115,40 +118,11 @@ class Http
                     }
                     break;
                 // cookie
-                case 'cookie':
-                    $_SERVER['HTTP_COOKIE'] = $value;
+                case 'COOKIE':
                     parse_str(str_replace('; ', '&', $_SERVER['HTTP_COOKIE']), $_COOKIE);
                     break;
-                // user-agent
-                case 'user-agent':
-                    $_SERVER['HTTP_USER_AGENT'] = $value;
-                    break;
-                // accept
-                case 'accept':
-                    $_SERVER['HTTP_ACCEPT'] = $value;
-                    break;
-                // accept-language
-                case 'accept-language':
-                    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = $value;
-                    break;
-                // accept-encoding
-                case 'accept-encoding':
-                    $_SERVER['HTTP_ACCEPT_ENCODING'] = $value;
-                    break;
-                // connection
-                case 'connection':
-                    $_SERVER['HTTP_CONNECTION'] = $value;
-                    break;
-                case 'referer':
-                    $_SERVER['HTTP_REFERER'] = $value;
-                    break;
-                case 'if-modified-since':
-                    $_SERVER['HTTP_IF_MODIFIED_SINCE'] = $value;
-                    break;
-                case 'if-none-match':
-                    $_SERVER['HTTP_IF_NONE_MATCH'] = $value;
-                    break;
-                case 'content-type':
+                // content-type
+                case 'CONTENT_TYPE':
                     if (!preg_match('/boundary="?(\S+)"?/', $value, $match)) {
                         $_SERVER['CONTENT_TYPE'] = $value;
                     } else {
@@ -156,8 +130,8 @@ class Http
                         $http_post_boundary      = '--' . $match[1];
                     }
                     break;
-                case 'x-requested-with':
-                    $_SERVER["HTTP_X_REQUESTED_WITH"] = $value;
+                case 'CONTENT_LENGTH':
+                    $_SERVER['CONTENT_LENGTH'] = $value;
                     break;
             }
         }
@@ -365,6 +339,7 @@ class Http
                 session_decode($raw);
             }
         }
+        return true;
     }
 
     /**
