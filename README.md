@@ -11,11 +11,13 @@ workerman-todpole
 
 ## Linux 系统安装部署
 
-1、下载或者clone代码到本地 详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole)
+1、下载或者clone代码到本地 (详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole) )
 
-2、进入目录运行 php start.php start -d
+2、运行composer install
 
-3、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
+3、进入目录运行 php start.php start -d
+
+4、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
 
 ## Windows系统
 Windows系统版本请使用这个包[小蝌蚪Windows版本](https://github.com/walkor/workerman-todpole-for-win)
