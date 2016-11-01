@@ -17,6 +17,8 @@ use \GatewayWorker\Gateway;
 use \GatewayWorker\BusinessWorker;
 use \Workerman\Autoloader;
 
+require_once __DIR__ . '/../../vendor/autoload.php';
+
 // WebServer
 $web = new WebServer("http://0.0.0.0:8383");
 // WebServer数量

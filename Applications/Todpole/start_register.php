@@ -14,6 +14,8 @@
 use \Workerman\Worker;
 use \GatewayWorker\Register;
 
+require_once __DIR__ . '/../../vendor/autoload.php';
+
 $register = new Register('text://0.0.0.0:1237');
 
 // 如果不是在根目录启动，则运行runAll方法

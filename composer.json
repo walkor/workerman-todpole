@@ -1,5 +1,5 @@
 {
-    "name"  : "workerman/workerman-chat",
+    "name"  : "workerman/workerman-todpole",
     "type"  : "project",
     "keywords": ["chat"],
     "homepage": "http://www.workerman.net",
