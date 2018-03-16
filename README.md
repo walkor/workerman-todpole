@@ -13,9 +13,9 @@ workerman-todpole
 
 1、下载或者clone代码到本地 (详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole) )
 
-2、运行composer install
+2、运行composer install 安装
 
-3、进入目录运行 php start.php start -d
+3、linux系统命令行进入目录运行 php start.php start -d。windows系统启动方法为双击start_for_win.bat
 
 4、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
 
