@@ -9,7 +9,7 @@ workerman-todpole
 [线上DEMO效果点击这里](http://kedou.workerman.net)
 
 
-## Linux 系统安装部署
+## 系统安装部署
 
 1、下载或者clone代码到本地 (详细安装教程见 [www.workerman.net/workerman-todpole](http://www.workerman.net/workerman-todpole) )
 
@@ -18,9 +18,6 @@ workerman-todpole
 3、linux系统命令行进入目录运行 php start.php start -d。windows系统启动方法为双击start_for_win.bat
 
 4、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
-
-## Windows系统
-Windows系统版本请使用这个包[小蝌蚪Windows版本](https://github.com/walkor/workerman-todpole-for-win)
 
 ## 虚拟空间（静态空间、php、jsp、asp等）安装部署
 虚拟空间安装请使用这个包 [网页空间版本](https://github.com/walkor/workerman-todpole-web)
