@@ -84,7 +84,9 @@ class Events
     */
    public static function onClose($client_id)
    {
-       // 广播 xxx 退出了
-       GateWay::sendToAll(json_encode(array('type'=>'closed', 'id'=>$client_id)));
+       if (isset($_SESSION['id'])) {
+            // 广播 xxx 退出了
+            GateWay::sendToAll(json_encode(array('type'=>'closed', 'id'=>$_SESSION['id'])));
+       }
    }
 }
