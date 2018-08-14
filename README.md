@@ -15,9 +15,11 @@ workerman-todpole
 
 2、运行composer install 安装
 
-3、linux系统命令行进入目录运行 php start.php start -d。windows系统启动方法为双击start_for_win.bat
+3、根据自己的实际情况修改Applications/Todpole/start_web.php中ssl证书的路径、域名或端口等
 
-4、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
+4、linux系统命令行进入目录运行 php start.php start -d。windows系统启动方法为双击start_for_win.bat
+
+5、浏览器访问地址  http://ip:8383 （ip为服务器ip）如图：（如果无法打开页面请尝试关闭服务器防火墙）
 
 ## 虚拟空间（静态空间、php、jsp、asp等）安装部署
 虚拟空间安装请使用这个包 [网页空间版本](https://github.com/walkor/workerman-todpole-web)
