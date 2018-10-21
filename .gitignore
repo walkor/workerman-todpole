@@ -2,3 +2,5 @@
 .settings/org.eclipse.php.core.prefs
 .project
 workerman/logs
+vendor
+composer.lock
