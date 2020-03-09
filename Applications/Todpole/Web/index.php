@@ -13,10 +13,10 @@
  */
 if(!function_exists('is_mobile'))
 {
-    function is_mobile()
+    function is_mobile($request)
     {
         //php判断客户端是否为手机
-        $agent = $_SERVER['HTTP_USER_AGENT'];
+        $agent = $request->header('user-agent');
         return (strpos($agent,"NetFront") || strpos($agent,"iPhone") || strpos($agent,"MIDP-2.0") || strpos($agent,"Opera Mini") || strpos($agent,"UCWEB") || strpos($agent,"Android") || strpos($agent,"Windows CE") || strpos($agent,"SymbianOS"));
     }
 }
@@ -46,7 +46,7 @@ if(!function_exists('is_mobile'))
 			<input id="chat" type="text" />
 			<div id="chatText"></div>
 			<h1>workerman</h1>
-		<?php if(!is_mobile()){?>
+		<?php if(!is_mobile($request)){?>
 			<div id="instructions">
 				<h2>介绍</h2>
 				<p>直接打字聊天!<br />输入 name: XX 则会设置你的昵称为XX</p>
