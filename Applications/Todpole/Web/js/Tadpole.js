@@ -140,6 +140,21 @@ var Tadpole = function() {
 		
 		drawName(context);
 		drawMessages(context);
+
+		// Draw eyes
+		context.lineWidth = tadpole.size / 3
+		context.fillStyle = 'rgba(0,0,0,' + opacity + ')'
+		context.strokeStyle = 'rgba(255,255,255,' + opacity + ')';
+		[
+			tadpole.x - tadpole.size / 1.5,
+			tadpole.x + tadpole.size / 1.5
+		].forEach(function (x) {
+			context.beginPath();
+			context.arc(x, tadpole.y - tadpole.size / 3, tadpole.size / 2, 0, Math.PI * 2, false);
+			context.closePath();
+			context.fill();
+			context.stroke();
+		});
 	};
 	
 	var isAuthorized = function() {
