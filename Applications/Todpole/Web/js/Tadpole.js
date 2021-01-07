@@ -142,15 +142,18 @@ var Tadpole = function() {
 		drawMessages(context);
 
 		// Draw eyes
-		context.lineWidth = tadpole.size / 3
+		context.lineWidth = tadpole.size / 4
 		context.fillStyle = 'rgba(0,0,0,' + opacity + ')'
 		context.strokeStyle = 'rgba(255,255,255,' + opacity + ')';
-		[
-			tadpole.x - tadpole.size / 1.5,
-			tadpole.x + tadpole.size / 1.5
-		].forEach(function (x) {
+		[{
+			x: tadpole.size /1.5  * Math.cos(tadpole.angle - Math.PI / 3),
+			y: tadpole.size /1.5 * Math.sin(tadpole.angle - Math.PI / 3)
+		}, {
+			x: tadpole.size /1.5 * Math.cos(tadpole.angle + Math.PI / 3),
+			y: tadpole.size /1.5 * Math.sin(tadpole.angle + Math.PI / 3)
+		}].forEach(function (item) {
 			context.beginPath();
-			context.arc(x, tadpole.y - tadpole.size / 3, tadpole.size / 2, 0, Math.PI * 2, false);
+			context.arc(tadpole.x + item.x, tadpole.y + item.y, tadpole.size / 3, 0, Math.PI * 2, false);
 			context.closePath();
 			context.fill();
 			context.stroke();
