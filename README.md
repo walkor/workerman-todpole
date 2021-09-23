@@ -3,7 +3,7 @@ workerman-todpole
 
 蝌蚪游泳交互程序 使用PHP（workerman框架）+HTML5开发
 
-![小蝌蚪游戏截图](https://github.com/walkor/workerman-todpole/blob/master/Applications/Todpole/Web/images/workerman-todpole-browser.png?raw=true)
+![小蝌蚪游戏截图](https://raw.githubusercontent.com/walkor/workerman-todpole/master/Applications/Todpole/Web/images/workerman-todpole-browser.png)
 
 
 [线上DEMO效果点击这里](http://kedou.workerman.net)
