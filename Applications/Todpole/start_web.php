@@ -44,7 +44,7 @@ $web->onMessage = function (TcpConnection $connection, Request $request) {
         return;
     }
     if (\pathinfo($file, PATHINFO_EXTENSION) === 'php') {
-        $connection->send(exec_php_file($file), $request);
+        $connection->send(exec_php_file($file, $request));
         return;
     }
 
