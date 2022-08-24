@@ -10,7 +10,8 @@
     },
     "autoload": {
         "psr-4": {
-            "" : "./"
+            "" : "./",
+            "" : "./Applications/Todpole/"
         }
     }
 }
